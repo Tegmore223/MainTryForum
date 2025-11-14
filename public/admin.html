@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB — Админ-панель</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="admin">
+  <header class="forum-header">
+    <h1>OP.WEB Admin</h1>
+    <a href="/" class="pixel-btn">На форум</a>
+  </header>
+  <main class="panel admin-panel">
+    <section>
+      <h2>Вход администратора</h2>
+      <form id="adminLoginForm">
+        <label>Логин<input name="nickname" value="tegmore" /></label>
+        <label>Пароль<input type="password" name="password" /></label>
+        <button class="pixel-btn" type="submit">Войти</button>
+      </form>
+      <div class="note">Резервный вход: пароль personal242273</div>
+    </section>
+    <section id="adminTools" class="hidden">
+      <h2>Инструменты</h2>
+      <div class="tool-grid">
+        <div>
+          <h3>Разделы</h3>
+          <form id="sectionForm">
+            <label>Название<input name="title" required /></label>
+            <label>Описание<textarea name="description" required></textarea></label>
+            <button class="pixel-btn">Добавить</button>
+          </form>
+        </div>
+        <div>
+          <h3>Назначения</h3>
+          <form id="roleForm">
+            <label>ID пользователя<input name="userId" required /></label>
+            <label>Роль<select name="role"><option value="moderator">Модератор</option><option value="admin">Админ</option></select></label>
+            <button class="pixel-btn">Назначить</button>
+          </form>
+        </div>
+        <div>
+          <h3>Бан</h3>
+          <form id="banForm">
+            <label>ID пользователя<input name="userId" /></label>
+            <label>IP<input name="ip" /></label>
+            <label>Причина<input name="reason" required /></label>
+            <label>Срок (часов)<input type="number" name="hours" /></label>
+            <button class="pixel-btn">Забанить</button>
+          </form>
+        </div>
+      </div>
+      <div class="tool-grid">
+        <div>
+          <h3>Статистика</h3>
+          <pre id="adminStats"></pre>
+        </div>
+        <div>
+          <h3>Логи</h3>
+          <pre id="adminLogs"></pre>
+        </div>
+        <div>
+          <h3>Экспорт пользователей</h3>
+          <button id="exportUsers" class="pixel-btn">Скачать CSV</button>
+        </div>
+        <div>
+          <h3>Архив тредов</h3>
+          <button id="loadArchive" class="pixel-btn">Показать</button>
+          <pre id="archiveBox"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/admin.js" defer></script>
+</body>
+</html>

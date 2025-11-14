@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB — Модерация</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="admin">
+  <header class="forum-header">
+    <h1>OP.WEB Mod</h1>
+    <a href="/" class="pixel-btn">На форум</a>
+  </header>
+  <main class="panel admin-panel">
+    <section>
+      <h2>Вход модератора</h2>
+      <form id="modLoginForm">
+        <label>Ник<input name="nickname" /></label>
+        <label>Пароль<input type="password" name="password" /></label>
+        <button class="pixel-btn" type="submit">Войти</button>
+      </form>
+    </section>
+    <section id="modTools" class="hidden">
+      <h2>Жалобы</h2>
+      <ul id="complaintList"></ul>
+      <h2>Временный бан</h2>
+      <form id="modBanForm">
+        <label>ID пользователя<input name="userId" /></label>
+        <label>IP<input name="ip" /></label>
+        <label>Причина<input name="reason" required /></label>
+        <label>Срок (часов)<input type="number" name="hours" required value="24" /></label>
+        <button class="pixel-btn">Применить</button>
+      </form>
+    </section>
+  </main>
+  <script src="/moderator.js" defer></script>
+</body>
+</html>

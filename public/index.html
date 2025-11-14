@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB Форум</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="forum-header">
+    <div>
+      <h1>OP.WEB</h1>
+      <p class="tagline">анонимный ретро-форум</p>
+    </div>
+    <div class="header-actions">
+      <button id="themeToggle" class="pixel-btn">Тема</button>
+      <div id="profileInfo" class="profile-badge">Гость</div>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="panel" id="authPanel">
+      <h2>Вход</h2>
+      <form id="loginForm">
+        <label>Никнейм<input name="nickname" required /></label>
+        <label>Пароль<input type="password" name="password" required /></label>
+        <button class="pixel-btn" type="submit">Войти</button>
+      </form>
+      <div class="divider"></div>
+      <h2>Регистрация</h2>
+      <form id="registerForm">
+        <label>Никнейм<input name="nickname" required /></label>
+        <label>Пароль<input type="password" name="password" required /></label>
+        <label>E-mail<input type="email" name="email" /></label>
+        <label>Ответ на капчу<input name="captchaAnswer" required /></label>
+        <input type="hidden" name="captchaId" />
+        <div id="captchaQuestion" class="captcha"></div>
+        <button class="pixel-btn" type="submit">Создать</button>
+      </form>
+    </section>
+    <section class="panel" id="forumPanel">
+      <h2>Разделы</h2>
+      <div id="sectionsList" class="section-list"></div>
+      <div id="threadsPanel" class="threads hidden">
+        <div class="threads-header">
+          <h3 id="currentSectionTitle"></h3>
+          <button id="newThreadBtn" class="pixel-btn">Новый тред</button>
+        </div>
+        <div id="threadsList"></div>
+        <form id="threadForm" class="hidden">
+          <label>Заголовок<input name="title" required /></label>
+          <label>Текст<textarea name="content" rows="4" required></textarea></label>
+          <button class="pixel-btn" type="submit">Публиковать</button>
+        </form>
+      </div>
+      <div id="threadView" class="thread-view hidden"></div>
+    </section>
+    <aside class="panel" id="statsPanel">
+      <h2>Статистика</h2>
+      <ul id="statsList"></ul>
+      <h3>Активность</h3>
+      <ul id="activityBadges" class="badges"></ul>
+      <h3>Моя статистика</h3>
+      <ul id="userStats"></ul>
+    </aside>
+  </main>
+  <footer class="footer">
+    <a href="/admin.html">Админ-панель</a> · <a href="/moderator.html">Модерация</a> · <span>© OP.WEB</span>
+  </footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
