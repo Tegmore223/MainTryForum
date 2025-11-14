@@ -141,6 +141,8 @@ async function handleApi(req, res) {
   }
 
   if (pathname === '/api/stats' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
     sendJson(res, 200, forumStats());
     return;
   }
@@ -248,6 +250,8 @@ async function handleApi(req, res) {
   }
 
   if (pathname === '/api/sections' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
     const sections = listSections();
     sendJson(res, 200, { sections });
     return;
@@ -265,6 +269,8 @@ async function handleApi(req, res) {
   }
 
   if (pathname.startsWith('/api/threads') && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
     if (pathname === '/api/threads') {
       const { sectionId, page } = parsedUrl.query;
       const payload = threadService.listThreads({ sectionId, page: Number(page) || 1 });

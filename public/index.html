@@ -7,65 +7,133 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <header class="forum-header">
-    <div>
-      <h1>OP.WEB</h1>
-      <p class="tagline">анонимный ретро-форум</p>
-    </div>
-    <div class="header-actions">
-      <button id="themeToggle" class="pixel-btn">Тема</button>
-      <div id="profileInfo" class="profile-badge">Гость</div>
-    </div>
-  </header>
-  <main class="layout">
-    <section class="panel" id="authPanel">
-      <h2>Вход</h2>
-      <form id="loginForm">
-        <label>Никнейм<input name="nickname" required /></label>
-        <label>Пароль<input type="password" name="password" required /></label>
-        <button class="pixel-btn" type="submit">Войти</button>
-      </form>
-      <div class="divider"></div>
-      <h2>Регистрация</h2>
-      <form id="registerForm">
-        <label>Никнейм<input name="nickname" required /></label>
-        <label>Пароль<input type="password" name="password" required /></label>
-        <label>E-mail<input type="email" name="email" /></label>
-        <label>Ответ на капчу<input name="captchaAnswer" required /></label>
-        <input type="hidden" name="captchaId" />
-        <div id="captchaQuestion" class="captcha"></div>
-        <button class="pixel-btn" type="submit">Создать</button>
-      </form>
-    </section>
-    <section class="panel" id="forumPanel">
-      <h2>Разделы</h2>
-      <div id="sectionsList" class="section-list"></div>
-      <div id="threadsPanel" class="threads hidden">
-        <div class="threads-header">
-          <h3 id="currentSectionTitle"></h3>
-          <button id="newThreadBtn" class="pixel-btn">Новый тред</button>
-        </div>
-        <div id="threadsList"></div>
-        <form id="threadForm" class="hidden">
-          <label>Заголовок<input name="title" required /></label>
-          <label>Текст<textarea name="content" rows="4" required></textarea></label>
-          <button class="pixel-btn" type="submit">Публиковать</button>
+  <div class="app-shell">
+    <header class="forum-header">
+      <div>
+        <p class="eyebrow">ретро-коммьюнити</p>
+        <h1>OP.WEB</h1>
+      </div>
+      <button id="profileBtn" class="profile-chip" type="button">
+        <span id="profileLabel">Гость</span>
+        <span class="avatar" id="profileAvatar"></span>
+      </button>
+    </header>
+
+    <main>
+      <section id="forumShell" class="layout hidden">
+        <section class="panel sections">
+          <div class="panel-head">
+            <h2>Разделы</h2>
+            <p>Выберите тему, чтобы просматривать треды.</p>
+          </div>
+          <div id="sectionsList" class="section-list"></div>
+        </section>
+
+        <section class="panel threads" id="threadsPanel">
+          <div class="threads-header">
+            <div>
+              <p class="eyebrow">Сейчас</p>
+              <h2 id="currentSectionTitle">Выберите раздел</h2>
+            </div>
+            <button id="newThreadBtn" class="accent-btn" type="button">Создать тред</button>
+          </div>
+          <div id="threadsList" class="threads-list"></div>
+          <form id="threadForm" class="create-thread hidden">
+            <label>Заголовок<input name="title" required maxlength="120" /></label>
+            <label>Текст<textarea name="content" rows="4" required></textarea></label>
+            <button class="accent-btn" type="submit">Публиковать</button>
+          </form>
+          <div id="threadView" class="thread-view hidden"></div>
+        </section>
+
+        <aside class="panel stats" id="statsPanel">
+          <div class="panel-head">
+            <h2>Статистика</h2>
+            <p>Пульс сообщества</p>
+          </div>
+          <ul id="statsList" class="key-stats"></ul>
+          <div class="panel-head small">
+            <h3>Активность</h3>
+          </div>
+          <ul id="activityBadges" class="badges"></ul>
+          <div class="panel-head small">
+            <h3>Моя статистика</h3>
+          </div>
+          <ul id="userStats" class="user-stats"></ul>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>© OP.WEB · без компромиссов в приватности</span>
+    </footer>
+  </div>
+
+  <section id="onboarding" class="onboarding">
+    <div class="onboarding-card">
+      <div class="onboarding-hero">
+        <p class="eyebrow">анонимный форум</p>
+        <h2>Войдите в OP.WEB</h2>
+        <p>Регистрация требуется, чтобы просматривать разделы. Только никнейм и пароль — электронная почта опциональна.</p>
+      </div>
+      <div class="auth-grid">
+        <form id="registerForm" class="auth-card">
+          <h3>Регистрация</h3>
+          <label>Никнейм<input name="nickname" required maxlength="24" autocomplete="nickname" /></label>
+          <label>Пароль<input type="password" name="password" required autocomplete="new-password" /></label>
+          <label>E-mail<input type="email" name="email" autocomplete="email" /></label>
+          <label>Ответ на капчу<input name="captchaAnswer" required /></label>
+          <input type="hidden" name="captchaId" />
+          <div id="captchaQuestion" class="captcha"></div>
+          <button class="accent-btn" type="submit">Зарегистрироваться</button>
+        </form>
+        <form id="loginForm" class="auth-card muted">
+          <h3>Вход</h3>
+          <label>Никнейм<input name="nickname" required autocomplete="username" /></label>
+          <label>Пароль<input type="password" name="password" required autocomplete="current-password" /></label>
+          <button class="ghost-btn" type="submit">Войти</button>
         </form>
       </div>
-      <div id="threadView" class="thread-view hidden"></div>
-    </section>
-    <aside class="panel" id="statsPanel">
-      <h2>Статистика</h2>
-      <ul id="statsList"></ul>
-      <h3>Активность</h3>
-      <ul id="activityBadges" class="badges"></ul>
-      <h3>Моя статистика</h3>
-      <ul id="userStats"></ul>
-    </aside>
-  </main>
-  <footer class="footer">
-    <a href="/admin.html">Админ-панель</a> · <a href="/moderator.html">Модерация</a> · <span>© OP.WEB</span>
-  </footer>
+    </div>
+  </section>
+
+  <div id="profilePanel" class="profile-panel hidden">
+    <div class="profile-card">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Профиль</p>
+          <h3 id="profileNickname">Гость</h3>
+          <p id="profileRole">Не авторизован</p>
+        </div>
+        <button id="profileClose" class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <div class="profile-card__body">
+        <div class="profile-section">
+          <h4>Данные</h4>
+          <ul id="profileDetails" class="profile-list"></ul>
+        </div>
+        <div class="profile-section">
+          <h4>Статистика</h4>
+          <ul id="profileStats" class="profile-list"></ul>
+        </div>
+        <div class="profile-section">
+          <h4>Настройки</h4>
+          <button id="profileThemeToggle" class="ghost-btn" type="button">Переключить тему</button>
+        </div>
+        <div class="profile-section hidden" id="adminLinks">
+          <h4>Управление</h4>
+          <div class="link-row">
+            <button data-link="/admin.html" class="accent-btn" type="button">Админ-панель</button>
+            <button data-link="/moderator.html" class="ghost-btn" type="button">Модерация</button>
+          </div>
+        </div>
+        <div class="profile-section">
+          <button id="logoutBtn" class="danger-btn" type="button">Выйти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js" defer></script>
 </body>
 </html>
