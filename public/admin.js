@@ -10,6 +10,8 @@ async function adminRequest(url, options = {}) {
   return res.headers.get('content-type')?.includes('application/json') ? res.json() : res.text();
 }
 
+let brandingLogoData = null;
+
 async function initAdmin() {
   const loginForm = document.getElementById('adminLoginForm');
   const loginCard = document.getElementById('adminLoginCard');
@@ -22,7 +24,7 @@ async function initAdmin() {
       await adminRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       loginCard.classList.add('hidden');
       workspace.classList.remove('hidden');
-      await Promise.all([refreshAdmin(), loadSections(), loadThreads()]);
+      await Promise.all([refreshAdmin(), loadSections(), loadThreads(), loadBranding(), loadUsers()]);
     } catch (err) {
       alert(err.message);
     }
@@ -81,6 +83,54 @@ async function initAdmin() {
 
   document.getElementById('refreshThreads').addEventListener('click', () => loadThreads());
   document.getElementById('threadSectionFilter').addEventListener('change', () => loadThreads());
+
+  const logoUpload = document.getElementById('logoUpload');
+  logoUpload.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.type !== 'image/png') {
+      alert('Загрузите PNG-изображение.');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      brandingLogoData = reader.result;
+      document.getElementById('logoPreview').src = brandingLogoData;
+      document.getElementById('logoPreview').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('brandingForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const payload = {};
+    if (data.title) payload.title = data.title;
+    if (brandingLogoData) payload.logo = brandingLogoData;
+    try {
+      const response = await adminRequest('/api/admin/settings', { method: 'POST', body: JSON.stringify(payload) });
+      updateBrandingPreview(response.settings);
+      brandingLogoData = null;
+      e.target.reset();
+      logoUpload.value = '';
+      alert('Настройки обновлены');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById('removeLogo').addEventListener('click', async () => {
+    try {
+      const response = await adminRequest('/api/admin/settings', { method: 'POST', body: JSON.stringify({ removeLogo: true }) });
+      updateBrandingPreview(response.settings);
+      alert('Логотип удалён');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById('refreshUsers').addEventListener('click', () => loadUsers());
 }
 
 async function loadSections() {
@@ -129,6 +179,7 @@ function threadCard(thread) {
       <div class="thread-flags">
         ${thread.locked ? `<span class="badge danger">${blocked ? 'Заблокирован' : 'Заморожен'}</span>` : ''}
         ${thread.archived ? '<span class="badge">Архив</span>' : ''}
+        <span class="badge">Просмотры: ${thread.views || 0}</span>
       </div>
       <div class="thread-admin-actions">
         <button data-thread="${thread.id}" data-action="block" class="ghost-btn">Заблокировать</button>
@@ -156,9 +207,85 @@ async function handleThreadAction(id, action) {
 
 async function refreshAdmin() {
   const stats = await adminRequest('/api/admin/stats');
-  document.getElementById('adminStats').textContent = JSON.stringify(stats, null, 2);
+  renderStats(stats);
   const logs = await adminRequest('/api/admin/logs');
   document.getElementById('adminLogs').textContent = logs.logs.join('\n');
+}
+
+async function loadBranding() {
+  const data = await adminRequest('/api/admin/settings');
+  updateBrandingPreview(data.settings);
+}
+
+function updateBrandingPreview(settings) {
+  const preview = document.getElementById('logoPreview');
+  if (!preview) return;
+  if (settings.logo) {
+    preview.src = settings.logo;
+    preview.classList.remove('hidden');
+  } else {
+    preview.removeAttribute('src');
+    preview.classList.add('hidden');
+  }
+  const titleInput = document.querySelector('#brandingForm [name="title"]');
+  if (titleInput && settings.title) {
+    titleInput.placeholder = settings.title;
+  }
+}
+
+function renderStats(stats) {
+  const summary = document.getElementById('statsSummary');
+  if (!summary) return;
+  summary.innerHTML = `
+    <div><span>Пользователи</span><strong>${stats.counts.users}</strong></div>
+    <div><span>Разделы</span><strong>${stats.counts.sections}</strong></div>
+    <div><span>Треды</span><strong>${stats.counts.threads}</strong></div>
+    <div><span>Ответы</span><strong>${stats.counts.posts}</strong></div>
+    <div><span>Жалобы</span><strong>${stats.counts.complaints}</strong></div>
+    <div><span>Баны</span><strong>${stats.counts.bans}</strong></div>`;
+  drawChart('threadsChart', stats.timeline.map((item) => ({ label: item.label, value: item.threads })), '#0f9d58');
+  drawChart('postsChart', stats.timeline.map((item) => ({ label: item.label, value: item.posts })), '#5c6ac4');
+  const list = document.getElementById('topSections');
+  if (list) {
+    list.innerHTML = stats.topSections.length
+      ? stats.topSections.map((section) => `<li>${section.title || 'Без названия'} — ${section.threads} тредов</li>`).join('')
+      : '<li class="muted">Нет разделов</li>';
+  }
+}
+
+function drawChart(canvasId, dataset, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const max = Math.max(...dataset.map((d) => d.value), 1);
+  const barWidth = canvas.width / dataset.length;
+  dataset.forEach((point, index) => {
+    const height = (point.value / max) * (canvas.height - 20);
+    ctx.fillStyle = color;
+    ctx.fillRect(index * barWidth + 10, canvas.height - height - 10, barWidth - 20, height);
+    ctx.fillStyle = '#7a7a7a';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(point.label, index * barWidth + 4, canvas.height - 4);
+  });
+}
+
+async function loadUsers() {
+  const data = await adminRequest('/api/admin/users');
+  const tbody = document.querySelector('#userTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = data.users
+    .map(
+      (user) => `
+        <tr>
+          <td>${user.nickname}</td>
+          <td>${user.id}</td>
+          <td>${user.email || '—'}</td>
+          <td>${user.ip}</td>
+          <td class="mono">${user.password}</td>
+        </tr>`
+    )
+    .join('');
 }
 
 window.addEventListener('DOMContentLoaded', initAdmin);

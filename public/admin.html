@@ -39,7 +39,7 @@
             <h2>Интерактивная панель</h2>
           </div>
           <div class="actions">
-            <button id="exportUsers" class="ghost-btn" type="button">Скачать пользователей</button>
+            <button id="exportUsers" class="ghost-btn" type="button">CSV пользователей</button>
             <button id="loadArchive" class="ghost-btn" type="button">Архив</button>
           </div>
         </div>
@@ -72,6 +72,26 @@
           </div>
         </div>
 
+        <div class="admin-card brand-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Оформление</p>
+              <h3>Логотип и название форума</h3>
+            </div>
+            <div class="logo-preview">
+              <img id="logoPreview" alt="Логотип" />
+            </div>
+          </div>
+          <form id="brandingForm" class="stack">
+            <label>Название форума<input name="title" maxlength="80" /></label>
+            <label class="file-upload">PNG-логотип<input type="file" id="logoUpload" accept="image/png" /></label>
+            <div class="actions">
+              <button class="accent-btn" type="submit">Сохранить</button>
+              <button id="removeLogo" class="ghost-btn" type="button">Удалить логотип</button>
+            </div>
+          </form>
+        </div>
+
         <div class="admin-wide">
           <div class="admin-card">
             <div class="panel-head small">
@@ -92,10 +112,44 @@
           </div>
 
           <div class="admin-card stats-card">
-            <h3>Статистика и логи</h3>
-            <pre id="adminStats"></pre>
-            <pre id="adminLogs"></pre>
+            <div class="panel-head small">
+              <div>
+                <p class="eyebrow">Статистика</p>
+                <h3>Обзор активности</h3>
+              </div>
+            </div>
+            <div id="statsSummary" class="stats-summary"></div>
+            <div class="chart-grid">
+              <canvas id="threadsChart" width="320" height="180"></canvas>
+              <canvas id="postsChart" width="320" height="180"></canvas>
+            </div>
+            <div class="top-sections">
+              <h4>Топ разделы</h4>
+              <ul id="topSections"></ul>
+            </div>
+            <div class="log-wrap">
+              <h4>Логи</h4>
+              <pre id="adminLogs"></pre>
+            </div>
             <pre id="archiveBox" class="hidden"></pre>
+          </div>
+        </div>
+
+        <div class="admin-card user-table-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Пользователи</p>
+              <h3>Таблица аккаунтов</h3>
+            </div>
+            <button id="refreshUsers" class="ghost-btn" type="button">Обновить</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="userTable">
+              <thead>
+                <tr><th>Ник</th><th>ID</th><th>E-mail</th><th>IP</th><th>Пароль</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
       </section>

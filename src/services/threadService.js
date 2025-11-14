@@ -5,6 +5,28 @@ const queue = require('./queueService');
 const { logAction } = require('./logService');
 const { saveBase64Image } = require('./imageService');
 
+function resolveNickname(db, userId) {
+  const user = db.users.find((u) => u.id === userId);
+  return user ? user.nickname : 'Аноним';
+}
+
+function normalizeThread(thread, db) {
+  if (!thread) return null;
+  const normalized = {
+    ...thread,
+    views: thread.views || 0,
+    authorNickname: thread.authorNickname || resolveNickname(db, thread.authorId)
+  };
+  return normalized;
+}
+
+function normalizePosts(posts, db) {
+  return posts.map((post) => ({
+    ...post,
+    authorNickname: post.authorNickname || resolveNickname(db, post.authorId)
+  }));
+}
+
 function listThreads({ sectionId, page = 1, limit = 20 }) {
   const cacheKey = `threads:${sectionId}:${page}`;
   const cached = cache.get(cacheKey);
@@ -13,7 +35,7 @@ function listThreads({ sectionId, page = 1, limit = 20 }) {
   const threads = db.threads.filter((t) => t.sectionId === sectionId && !t.archived);
   const total = threads.length;
   const start = (page - 1) * limit;
-  const sliced = threads.slice(start, start + limit);
+  const sliced = threads.slice(start, start + limit).map((thread) => normalizeThread(thread, db));
   const payload = { items: sliced, total };
   cache.set(cacheKey, payload);
   return payload;
@@ -27,13 +49,14 @@ function getThread(id) {
   const thread = db.threads.find((t) => t.id === id);
   if (!thread) return null;
   const posts = db.posts.filter((p) => p.threadId === id);
-  const payload = { ...thread, posts };
+  const payload = { ...normalizeThread(thread, db), posts: normalizePosts(posts, db) };
   cache.set(cacheKey, payload);
   return payload;
 }
 
 function createThread({ sectionId, title, content, authorId, format, attachment }) {
   const db = readDb();
+  const authorNickname = resolveNickname(db, authorId);
   const thread = {
     id: createId('thread-'),
     sectionId,
@@ -41,6 +64,7 @@ function createThread({ sectionId, title, content, authorId, format, attachment 
     content,
     format: format || 'markdown',
     authorId,
+    authorNickname,
     createdAt: new Date().toISOString(),
     likes: [],
     thanks: [],
@@ -51,7 +75,8 @@ function createThread({ sectionId, title, content, authorId, format, attachment 
     archived: false,
     highlight: false,
     stats: { replies: 0 },
-    banner: ''
+    banner: '',
+    views: 0
   };
   if (attachment) {
     const threadId = thread.id;
@@ -77,11 +102,13 @@ function replyThread({ threadId, content, authorId, parentId }) {
   const thread = db.threads.find((t) => t.id === threadId);
   if (!thread) throw new Error('Thread not found');
   if (thread.locked) throw new Error('Thread locked');
+  const nickname = resolveNickname(db, authorId);
   const post = {
     id: createId('post-'),
     threadId,
     content,
     authorId,
+    authorNickname: nickname,
     parentId: parentId || null,
     createdAt: new Date().toISOString(),
     likes: [],
@@ -207,7 +234,25 @@ function listRecentThreads({ sectionId, limit = 25 } = {}) {
     threads = threads.filter((t) => t.sectionId === sectionId);
   }
   threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  return threads.slice(0, limit);
+  return threads.slice(0, limit).map((thread) => normalizeThread(thread, db));
+}
+
+function incrementView(id) {
+  const db = readDb();
+  const thread = db.threads.find((t) => t.id === id);
+  if (!thread) return null;
+  thread.views = (thread.views || 0) + 1;
+  writeDb(db);
+  cache.invalidate(`thread:${id}`);
+  cache.invalidate(`threads:${thread.sectionId}`);
+  return thread.views;
+}
+
+function collectUserLibrary(userId) {
+  const db = readDb();
+  const favorites = db.threads.filter((t) => (t.favorites || []).includes(userId)).map((thread) => normalizeThread(thread, db));
+  const liked = db.threads.filter((t) => (t.likes || []).includes(userId)).map((thread) => normalizeThread(thread, db));
+  return { favorites, liked };
 }
 
 module.exports = {
@@ -220,5 +265,7 @@ module.exports = {
   freezeThread,
   archiveThread,
   deleteThread,
-  listRecentThreads
+  listRecentThreads,
+  incrementView,
+  collectUserLibrary
 };

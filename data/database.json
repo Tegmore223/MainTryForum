@@ -24,5 +24,9 @@
   "complaints": [],
   "bans": [],
   "logs": [],
-  "archivedThreads": []
+  "archivedThreads": [],
+  "settings": {
+    "title": "OP.WEB",
+    "logo": ""
+  }
 }

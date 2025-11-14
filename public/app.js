@@ -3,7 +3,9 @@ const state = {
   sections: [],
   threads: [],
   currentSection: null,
-  currentThread: null
+  currentThread: null,
+  settings: { title: 'OP.WEB', logo: '' },
+  library: { favorites: [], liked: [] }
 };
 
 const onboardingEl = document.getElementById('onboarding');
@@ -11,6 +13,15 @@ const forumShell = document.getElementById('forumShell');
 const profileBtn = document.getElementById('profileBtn');
 const profilePanel = document.getElementById('profilePanel');
 const profileLabel = document.getElementById('profileLabel');
+const homeButton = document.getElementById('homeButton');
+const collectionsBtn = document.getElementById('collectionsBtn');
+const collectionsPanel = document.getElementById('collectionsPanel');
+const favoriteList = document.getElementById('favoriteList');
+const likedList = document.getElementById('likedList');
+const complaintPanel = document.getElementById('complaintPanel');
+const complaintForm = document.getElementById('complaintForm');
+const forumLogoText = document.getElementById('forumLogoText');
+const forumLogoImage = document.getElementById('forumLogoImage');
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -29,6 +40,28 @@ async function request(url, options = {}) {
   return res.text();
 }
 
+async function loadSettings() {
+  try {
+    const data = await request('/api/settings/public', { method: 'GET' });
+    state.settings = data.settings;
+    applySettings();
+  } catch (err) {
+    console.warn('Не удалось загрузить настройки', err);
+  }
+}
+
+function applySettings() {
+  if (state.settings.logo) {
+    forumLogoImage.src = state.settings.logo;
+    forumLogoImage.classList.remove('hidden');
+    forumLogoText.classList.add('hidden');
+  } else {
+    forumLogoText.textContent = state.settings.title || 'OP.WEB';
+    forumLogoText.classList.remove('hidden');
+    forumLogoImage.classList.add('hidden');
+  }
+}
+
 async function loadCaptcha() {
   const captcha = await request('/api/auth/captcha');
   document.querySelector('#registerForm [name="captchaId"]').value = captcha.captchaId;
@@ -36,9 +69,13 @@ async function loadCaptcha() {
 }
 
 async function init() {
+  await loadSettings();
   bindAuth();
   bindThreadForm();
   bindProfilePanel();
+  bindHomeNavigation();
+  bindCollectionsPanel();
+  bindComplaintPanel();
   await loadCaptcha();
   await refreshProfile();
 }
@@ -89,6 +126,110 @@ function bindThreadForm() {
       alert(err.message);
     }
   });
+}
+
+function bindHomeNavigation() {
+  homeButton.addEventListener('click', () => {
+    if (!state.user) {
+      showOnboarding();
+      return;
+    }
+    resetForumView();
+  });
+}
+
+function bindCollectionsPanel() {
+  if (!collectionsBtn) return;
+  const closeBtn = document.querySelector('[data-close-collections]');
+  collectionsBtn.addEventListener('click', async () => {
+    if (!state.user) {
+      showOnboarding();
+      return;
+    }
+    await loadLibrary();
+    collectionsPanel.classList.remove('hidden');
+  });
+  collectionsPanel.addEventListener('click', (e) => {
+    if (e.target === collectionsPanel) collectionsPanel.classList.add('hidden');
+  });
+  if (closeBtn) closeBtn.addEventListener('click', () => collectionsPanel.classList.add('hidden'));
+  document.querySelectorAll('.collection-list').forEach((list) => {
+    list.addEventListener('click', (e) => {
+      const item = e.target.closest('li[data-thread]');
+      if (!item) return;
+      openThread(item.dataset.thread);
+      collectionsPanel.classList.add('hidden');
+    });
+  });
+}
+
+function bindComplaintPanel() {
+  if (!complaintPanel) return;
+  const closeBtn = document.querySelector('[data-close-complaint]');
+  if (closeBtn) closeBtn.addEventListener('click', () => complaintPanel.classList.add('hidden'));
+  complaintPanel.addEventListener('click', (e) => {
+    if (e.target === complaintPanel) complaintPanel.classList.add('hidden');
+  });
+  complaintForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!state.user) {
+      showOnboarding();
+      return;
+    }
+    const reason = e.target.reason.value.trim();
+    const targetId = e.target.targetId.value;
+    if (!reason) return;
+    try {
+      await request('/api/complaints', {
+        method: 'POST',
+        body: JSON.stringify({ targetType: 'thread', targetId, reason })
+      });
+      alert('Жалоба отправлена');
+      e.target.reset();
+      complaintPanel.classList.add('hidden');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+}
+
+async function loadLibrary() {
+  try {
+    const data = await request('/api/library');
+    state.library = data;
+    renderCollections(data);
+  } catch (err) {
+    console.warn('library error', err);
+  }
+}
+
+function renderCollections(library) {
+  const applyList = (element, items) => {
+    element.innerHTML = items.length
+      ? items
+          .map(
+            (thread) => `
+        <li data-thread="${thread.id}">
+          <strong>${thread.title}</strong>
+          <small>${thread.views || 0} просмотров</small>
+        </li>`
+          )
+          .join('')
+      : '<li class="muted">Нет данных</li>';
+  };
+  applyList(favoriteList, library.favorites || []);
+  applyList(likedList, library.liked || []);
+}
+
+function openComplaint(thread) {
+  if (!state.user) {
+    showOnboarding();
+    return;
+  }
+  complaintForm.targetId.value = thread.id;
+  document.getElementById('complaintTitle').textContent = thread.title;
+  complaintForm.reason.value = '';
+  complaintPanel.classList.remove('hidden');
 }
 
 function bindProfilePanel() {
@@ -233,6 +374,7 @@ function updateProfileView(user) {
 function showForum() {
   onboardingEl.classList.add('hidden');
   forumShell.classList.remove('hidden');
+  resetForumView();
 }
 
 function showOnboarding() {
@@ -245,9 +387,21 @@ function clearForumState() {
   state.currentSection = null;
   state.threads = [];
   state.currentThread = null;
+  state.library = { favorites: [], liked: [] };
   document.getElementById('sectionsList').innerHTML = '';
   document.getElementById('threadsList').innerHTML = '';
   document.getElementById('threadView').classList.add('hidden');
+}
+
+function resetForumView() {
+  document.getElementById('currentSectionTitle').textContent = 'Выберите раздел';
+  document.getElementById('threadForm').classList.add('hidden');
+  document.getElementById('threadView').classList.add('hidden');
+  const list = document.getElementById('threadsList');
+  list.innerHTML = '<p class="muted">Откройте раздел, чтобы увидеть треды.</p>';
+  document.querySelectorAll('.section-card').forEach((el) => el.classList.remove('active'));
+  state.currentSection = null;
+  state.currentThread = null;
 }
 
 async function loadSections() {
@@ -256,17 +410,29 @@ async function loadSections() {
   const list = document.getElementById('sectionsList');
   list.innerHTML = '';
   sections.forEach((section) => {
-    const div = document.createElement('div');
-    div.className = 'section';
-    div.innerHTML = `<strong>${section.title}</strong><p>${section.description}</p>`;
-    div.addEventListener('click', () => openSection(section));
-    list.appendChild(div);
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    if (state.currentSection && state.currentSection.id === section.id) {
+      card.classList.add('active');
+    }
+    card.innerHTML = `
+      <div>
+        <strong>${section.title}</strong>
+        <p>${section.description}</p>
+      </div>
+      <span class="chevron">→</span>`;
+    card.addEventListener('click', () => openSection(section));
+    list.appendChild(card);
   });
 }
 
 async function openSection(section) {
   state.currentSection = section;
   document.getElementById('currentSectionTitle').textContent = section.title;
+  document.querySelectorAll('.section-card').forEach((card) => {
+    const title = card.querySelector('strong')?.textContent || '';
+    card.classList.toggle('active', title === section.title);
+  });
   const threads = await request(`/api/threads?sectionId=${section.id}`);
   state.threads = threads.items;
   const container = document.getElementById('threadsList');
@@ -280,11 +446,22 @@ async function openSection(section) {
         <div>
           <strong>${thread.title}</strong>
           <small class="thread-id">${thread.id}</small>
+          <p class="thread-author">Автор: ${thread.authorNickname || 'Аноним'}</p>
         </div>
-        <span>${thread.stats.replies} ответов</span>
+        <div class="thread-counts">
+          <span>${thread.stats.replies} ответов</span>
+          <span>${thread.views || 0} просмотров</span>
+        </div>
       </div>
-      <div class="thread-meta">❤ ${thread.likes.length} · ✨ ${thread.thanks.length} · ★ ${thread.favorites.length} ${status}</div>`;
+      <div class="thread-meta">❤ ${thread.likes.length} · ✨ ${thread.thanks.length} · ★ ${thread.favorites.length} ${status}</div>
+      <div class="thread-actions">
+        <button class="ghost-btn complaint-btn" type="button">Пожаловаться</button>
+      </div>`;
     div.addEventListener('click', () => openThread(thread.id));
+    div.querySelector('.complaint-btn').addEventListener('click', (event) => {
+      event.stopPropagation();
+      openComplaint(thread);
+    });
     container.appendChild(div);
   });
 }
@@ -301,8 +478,17 @@ async function openThread(id) {
         <button class="ghost-btn">Ответить</button>
       </form>`;
   view.innerHTML = `
-    <h3>${thread.title} <small class="thread-id">${thread.id}</small></h3>
-    <p>${thread.content}</p>
+    <div class="thread-title-row">
+      <div>
+        <h3>${thread.title} <small class="thread-id">${thread.id}</small></h3>
+        <p class="thread-author">Автор: ${thread.authorNickname || 'Аноним'}</p>
+      </div>
+      <div class="thread-counts">
+        <span>${thread.views || 0} просмотров</span>
+        <button class="ghost-btn" id="threadComplaintBtn" type="button">Пожаловаться</button>
+      </div>
+    </div>
+    <p class="thread-body">${thread.content}</p>
     <div class="thread-controls">
       <button class="accent-btn" data-action="like">Лайк (${thread.likes.length})</button>
       <button class="accent-btn" data-action="thanks">Благодарность (${thread.thanks.length})</button>
@@ -328,16 +514,24 @@ async function openThread(id) {
   view.querySelectorAll('.thread-controls button').forEach((btn) => {
     btn.addEventListener('click', () => reactThread(thread.id, btn.dataset.action));
   });
+  const complaintBtn = document.getElementById('threadComplaintBtn');
+  if (complaintBtn) {
+    complaintBtn.addEventListener('click', () => openComplaint(thread));
+  }
 }
 
 function renderPost(post) {
-  return `<div class="post"><div class="meta">${post.authorId} · ${new Date(post.createdAt).toLocaleString()}</div><div>${post.content}</div></div>`;
+  const author = post.authorNickname || post.authorId;
+  return `<div class="post"><div class="meta">${author} · ${new Date(post.createdAt).toLocaleString()}</div><div>${post.content}</div></div>`;
 }
 
 async function reactThread(id, type) {
   try {
     await request(`/api/threads/${id}/react`, { method: 'POST', body: JSON.stringify({ type }) });
     openThread(id);
+    if (!collectionsPanel.classList.contains('hidden')) {
+      await loadLibrary();
+    }
   } catch (err) {
     alert(err.message);
   }

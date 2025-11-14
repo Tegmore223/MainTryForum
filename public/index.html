@@ -9,19 +9,25 @@
 <body>
   <div class="app-shell">
     <header class="forum-header">
-      <div>
-        <p class="eyebrow">ретро-коммьюнити</p>
-        <h1>OP.WEB</h1>
-      </div>
-      <button id="profileBtn" class="profile-chip" type="button">
-        <span id="profileLabel">Гость</span>
-        <span class="avatar" id="profileAvatar"></span>
+      <button id="homeButton" class="logo-button" type="button" aria-label="На главную">
+        <div class="logo-stack">
+          <p class="eyebrow">анонимный форум</p>
+          <span id="forumLogoText">OP.WEB</span>
+        </div>
+        <img id="forumLogoImage" class="logo-image hidden" alt="Логотип форума" />
       </button>
+      <div class="header-actions">
+        <button id="collectionsBtn" class="ghost-btn" type="button" aria-label="Коллекции" title="Избранные и лайкнутые треды">★</button>
+        <button id="profileBtn" class="profile-chip" type="button">
+          <span id="profileLabel">Гость</span>
+          <span class="avatar" id="profileAvatar"></span>
+        </button>
+      </div>
     </header>
 
     <main>
       <section id="forumShell" class="layout hidden">
-        <section class="panel sections">
+        <section class="panel sections emphasis">
           <div class="panel-head">
             <h2>Разделы</h2>
             <p>Выберите тему, чтобы просматривать треды.</p>
@@ -65,7 +71,7 @@
           <h3>Регистрация</h3>
           <label>Никнейм<input name="nickname" required maxlength="24" autocomplete="nickname" /></label>
           <label>Пароль<input type="password" name="password" required autocomplete="new-password" /></label>
-          <label>E-mail<input type="email" name="email" autocomplete="email" /></label>
+          <label>E-mail (опционально)<input type="email" name="email" autocomplete="email" placeholder="Можно оставить пустым" /></label>
           <label>Ответ на капчу<input name="captchaAnswer" required /></label>
           <input type="hidden" name="captchaId" />
           <div id="captchaQuestion" class="captcha"></div>
@@ -118,6 +124,45 @@
           <button id="logoutBtn" class="danger-btn" type="button">Выйти</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="collectionsPanel" class="profile-panel hidden">
+    <div class="profile-card compact">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Коллекции</p>
+          <h3>Избранное и лайки</h3>
+        </div>
+        <button data-close-collections class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <div class="collections-grid">
+        <section>
+          <h4>Избранные</h4>
+          <ul id="favoriteList" class="collection-list"></ul>
+        </section>
+        <section>
+          <h4>Лайкнутые</h4>
+          <ul id="likedList" class="collection-list"></ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="complaintPanel" class="profile-panel hidden">
+    <div class="profile-card compact">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Жалоба</p>
+          <h3 id="complaintTitle">Тред</h3>
+        </div>
+        <button data-close-complaint class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <form id="complaintForm" class="stack">
+        <input type="hidden" name="targetId" />
+        <textarea name="reason" rows="4" required placeholder="Опишите проблему"></textarea>
+        <button class="danger-btn" type="submit">Отправить</button>
+      </form>
     </div>
   </div>
 

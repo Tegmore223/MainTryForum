@@ -11,7 +11,7 @@ const { listSections, addSection } = require('./services/sectionService');
 const threadService = require('./services/threadService');
 const moderationService = require('./services/moderationService');
 const { forumStats } = require('./services/statService');
-const { saveBase64Image } = require('./services/imageService');
+const { saveBase64Image, saveUiAsset } = require('./services/imageService');
 const { fileComplaint } = moderationService;
 const { readDb, writeDb } = require('./utils/storage');
 const { createId } = require('./utils/id');
@@ -140,6 +140,12 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname === '/api/settings/public' && method === 'GET') {
+    const db = readDb();
+    sendJson(res, 200, { settings: db.settings || { title: 'OP.WEB', logo: '' } });
+    return;
+  }
+
   if (pathname === '/api/stats' && method === 'GET') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -257,6 +263,14 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname === '/api/library' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const library = threadService.collectUserLibrary(user.id);
+    sendJson(res, 200, library);
+    return;
+  }
+
   if (pathname === '/api/sections' && method === 'POST') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -278,6 +292,7 @@ async function handleApi(req, res) {
       return;
     }
     const threadId = pathname.split('/').pop();
+    threadService.incrementView(threadId);
     const thread = threadService.getThread(threadId);
     if (!thread) {
       sendJson(res, 404, { error: 'not_found' });
@@ -451,6 +466,42 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname === '/api/admin/settings' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const db = readDb();
+    sendJson(res, 200, { settings: db.settings });
+    return;
+  }
+
+  if (pathname === '/api/admin/settings' && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const body = await parseBody(req);
+    const db = readDb();
+    const settings = { ...db.settings };
+    if (typeof body.title === 'string') {
+      settings.title = body.title.trim().slice(0, 80) || settings.title;
+    }
+    if (body.removeLogo) {
+      settings.logo = '';
+    } else if (body.logo) {
+      try {
+        settings.logo = saveUiAsset(body.logo);
+      } catch (err) {
+        sendJson(res, 400, { error: err.message });
+        return;
+      }
+    }
+    db.settings = settings;
+    writeDb(db);
+    logAction('update_settings', user.nickname, { title: settings.title, hasLogo: Boolean(settings.logo) });
+    sendJson(res, 200, { settings });
+    return;
+  }
+
   if (pathname === '/api/admin/stats' && method === 'GET') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -483,12 +534,28 @@ async function handleApi(req, res) {
     if (!user) return;
     if (!requireRole(user, res, ['admin'])) return;
     const users = listUsers();
-    const csv = ['nickname,email,ip'].concat(users.map((u) => `${u.nickname},${u.email},${u.ip}`)).join('\n');
+    const csv = ['nickname,id,email,password'].concat(users.map((u) => `${u.nickname},${u.id},${u.email},${u.passwordHash}`)).join('\n');
     res.writeHead(200, {
       'Content-Type': 'text/csv',
       'Content-Disposition': 'attachment; filename="users.csv"'
     });
     res.end(csv);
+    return;
+  }
+
+  if (pathname === '/api/admin/users' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const users = listUsers().map((entry) => ({
+      nickname: entry.nickname,
+      id: entry.id,
+      email: entry.email,
+      ip: entry.ip,
+      password: entry.passwordHash,
+      createdAt: entry.createdAt
+    }));
+    sendJson(res, 200, { users });
     return;
   }
 
