@@ -363,6 +363,34 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname.match(/\/api\/threads\/[^/]+\/freeze/) && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin', 'moderator'])) return;
+    const threadId = pathname.split('/')[3];
+    try {
+      const thread = threadService.freezeThread(threadId, user.nickname);
+      sendJson(res, 200, thread);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  if (pathname.match(/\/api\/threads\/[^/]+\/delete/) && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const threadId = pathname.split('/')[3];
+    try {
+      threadService.deleteThread(threadId, user.nickname);
+      sendJson(res, 200, { status: 'deleted' });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
   if (pathname === '/api/complaints' && method === 'POST') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -428,6 +456,16 @@ async function handleApi(req, res) {
     if (!user) return;
     if (!requireRole(user, res, ['admin'])) return;
     sendJson(res, 200, forumStats());
+    return;
+  }
+
+  if (pathname === '/api/admin/threads' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const { sectionId, limit } = parsedUrl.query;
+    const threads = threadService.listRecentThreads({ sectionId, limit: Math.min(Number(limit) || 25, 100) });
+    sendJson(res, 200, { threads });
     return;
   }
 

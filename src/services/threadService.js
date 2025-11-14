@@ -46,6 +46,8 @@ function createThread({ sectionId, title, content, authorId, format, attachment 
     thanks: [],
     favorites: [],
     locked: false,
+    lockReason: null,
+    frozen: false,
     archived: false,
     highlight: false,
     stats: { replies: 0 },
@@ -141,10 +143,34 @@ function lockThread(id, actor) {
   const thread = db.threads.find((t) => t.id === id);
   if (!thread) throw new Error('Thread not found');
   thread.locked = true;
+  thread.lockReason = 'blocked';
+  thread.frozen = false;
   thread.content = 'Этот тред был удалён за нарушение правил.';
+  db.posts = db.posts.filter((p) => p.threadId !== id);
+  thread.stats.replies = 0;
   writeDb(db);
   cache.invalidate(`thread:${id}`);
+  cache.invalidate('threads');
   logAction('lock_thread', actor, { threadId: id });
+  return thread;
+}
+
+function freezeThread(id, actor) {
+  const db = readDb();
+  const thread = db.threads.find((t) => t.id === id);
+  if (!thread) throw new Error('Thread not found');
+  thread.frozen = !thread.frozen;
+  if (thread.frozen) {
+    thread.locked = true;
+    thread.lockReason = 'frozen';
+  } else if (thread.lockReason === 'frozen') {
+    thread.locked = false;
+    thread.lockReason = null;
+  }
+  writeDb(db);
+  cache.invalidate(`thread:${id}`);
+  cache.invalidate('threads');
+  logAction('freeze_thread', actor, { threadId: id, frozen: thread.frozen });
   return thread;
 }
 
@@ -161,6 +187,29 @@ function archiveThread(id, actor) {
   return thread;
 }
 
+function deleteThread(id, actor) {
+  const db = readDb();
+  const idx = db.threads.findIndex((t) => t.id === id);
+  if (idx === -1) throw new Error('Thread not found');
+  const [thread] = db.threads.splice(idx, 1);
+  db.posts = db.posts.filter((p) => p.threadId !== id);
+  writeDb(db);
+  cache.invalidate('threads');
+  cache.invalidate(`thread:${id}`);
+  logAction('delete_thread', actor, { threadId: id });
+  return thread;
+}
+
+function listRecentThreads({ sectionId, limit = 25 } = {}) {
+  const db = readDb();
+  let threads = db.threads.filter((t) => !t.archived);
+  if (sectionId) {
+    threads = threads.filter((t) => t.sectionId === sectionId);
+  }
+  threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return threads.slice(0, limit);
+}
+
 module.exports = {
   listThreads,
   getThread,
@@ -168,5 +217,8 @@ module.exports = {
   replyThread,
   toggleReaction,
   lockThread,
-  archiveThread
+  freezeThread,
+  archiveThread,
+  deleteThread,
+  listRecentThreads
 };

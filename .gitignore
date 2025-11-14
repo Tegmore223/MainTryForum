@@ -1,3 +1,4 @@
 node_modules
 logs/*.log
 public/assets/avatars/*
+dist/

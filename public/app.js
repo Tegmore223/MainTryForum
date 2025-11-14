@@ -96,6 +96,7 @@ function bindProfilePanel() {
   const logoutBtn = document.getElementById('logoutBtn');
   const adminLinks = document.getElementById('adminLinks');
   const themeToggle = document.getElementById('profileThemeToggle');
+  const avatarUpload = document.getElementById('avatarUpload');
 
   profileBtn.addEventListener('click', () => {
     if (!state.user) {
@@ -130,6 +131,27 @@ function bindProfilePanel() {
     }
   });
 
+  avatarUpload.addEventListener('change', async (event) => {
+    if (!event.target.files.length) return;
+    const file = event.target.files[0];
+    if (file.size > 400 * 1024) {
+      alert('Файл слишком большой (макс 400 КБ).');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        await request('/api/profile/avatar', { method: 'POST', body: JSON.stringify({ avatar: reader.result }) });
+        await refreshProfile();
+        event.target.value = '';
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
   themeToggle.addEventListener('click', async () => {
     const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
@@ -151,14 +173,10 @@ async function refreshProfile() {
     document.documentElement.setAttribute('data-theme', state.user.theme || 'light');
     updateProfileView(state.user);
     showForum();
-    await Promise.all([loadSections(), loadStats()]);
-    renderBadges(state.user.badges);
-    renderUserStats(state.user);
+    await loadSections();
   } catch (err) {
     state.user = null;
     profileLabel.textContent = 'Гость';
-    renderBadges();
-    renderUserStats(null);
     showOnboarding();
     clearForumState();
   }
@@ -246,38 +264,6 @@ async function loadSections() {
   });
 }
 
-async function loadStats() {
-  const stats = await request('/api/stats');
-  const list = document.getElementById('statsList');
-  list.innerHTML = Object.entries(stats)
-    .map(([key, value]) => `<li>${key}: <strong>${value}</strong></li>`)
-    .join('');
-}
-
-function renderBadges(list) {
-  const badges = document.getElementById('activityBadges');
-  badges.innerHTML = '';
-  (list && list.length ? list : ['Гость форума']).forEach((badge) => {
-    const li = document.createElement('li');
-    li.textContent = badge;
-    badges.appendChild(li);
-  });
-}
-
-function renderUserStats(user) {
-  const el = document.getElementById('userStats');
-  if (!user) {
-    el.innerHTML = '<li>Войдите, чтобы увидеть статистику</li>';
-    return;
-  }
-  el.innerHTML = `
-    <li>Репутация: ${user.reputation}</li>
-    <li>Лайки: ${user.likes}</li>
-    <li>Благодарности: ${user.thanks}</li>
-    <li>Ответы: ${user.answers}</li>
-    <li>Избранное: ${user.favorites.length}</li>`;
-}
-
 async function openSection(section) {
   state.currentSection = section;
   document.getElementById('currentSectionTitle').textContent = section.title;
@@ -288,12 +274,16 @@ async function openSection(section) {
   threads.items.forEach((thread) => {
     const div = document.createElement('div');
     div.className = 'thread-card';
+    const status = thread.locked ? `<span class="badge danger">${thread.lockReason === 'frozen' ? 'Заморожен' : 'Удалён'}</span>` : '';
     div.innerHTML = `
       <div class="thread-head">
-        <strong>${thread.title}</strong>
+        <div>
+          <strong>${thread.title}</strong>
+          <small class="thread-id">${thread.id}</small>
+        </div>
         <span>${thread.stats.replies} ответов</span>
       </div>
-      <div class="thread-meta">❤ ${thread.likes.length} · ✨ ${thread.thanks.length} · ★ ${thread.favorites.length}</div>`;
+      <div class="thread-meta">❤ ${thread.likes.length} · ✨ ${thread.thanks.length} · ★ ${thread.favorites.length} ${status}</div>`;
     div.addEventListener('click', () => openThread(thread.id));
     container.appendChild(div);
   });
@@ -304,31 +294,37 @@ async function openThread(id) {
   state.currentThread = thread;
   const view = document.getElementById('threadView');
   view.classList.remove('hidden');
+  const replyForm = thread.locked
+    ? `<div class="notice">${thread.lockReason === 'frozen' ? 'Тред временно заморожен.' : 'Тред заблокирован.'}</div>`
+    : `<form id="replyForm">
+        <textarea name="content" rows="3" required placeholder="Ответ..."></textarea>
+        <button class="ghost-btn">Ответить</button>
+      </form>`;
   view.innerHTML = `
-    <h3>${thread.title}</h3>
+    <h3>${thread.title} <small class="thread-id">${thread.id}</small></h3>
     <p>${thread.content}</p>
     <div class="thread-controls">
       <button class="accent-btn" data-action="like">Лайк (${thread.likes.length})</button>
       <button class="accent-btn" data-action="thanks">Благодарность (${thread.thanks.length})</button>
       <button class="accent-btn" data-action="favorite">Избранное (${thread.favorites.length})</button>
     </div>
-    <form id="replyForm">
-      <textarea name="content" rows="3" required placeholder="Ответ..."></textarea>
-      <button class="ghost-btn">Ответить</button>
-    </form>
+    ${replyForm}
     <div class="posts">${thread.posts.map(renderPost).join('')}</div>`;
-  view.querySelector('#replyForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const content = e.target.content.value.trim();
-    if (!content) return;
-    try {
-      await request(`/api/threads/${thread.id}/reply`, { method: 'POST', body: JSON.stringify({ content }) });
-      e.target.reset();
-      openThread(thread.id);
-    } catch (err) {
-      alert(err.message);
-    }
-  });
+  const form = view.querySelector('#replyForm');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = e.target.content.value.trim();
+      if (!content) return;
+      try {
+        await request(`/api/threads/${thread.id}/reply`, { method: 'POST', body: JSON.stringify({ content }) });
+        e.target.reset();
+        openThread(thread.id);
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
   view.querySelectorAll('.thread-controls button').forEach((btn) => {
     btn.addEventListener('click', () => reactThread(thread.id, btn.dataset.action));
   });

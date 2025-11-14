@@ -3,75 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OP.WEB — Админ-панель</title>
+  <title>OP.WEB — Администрирование</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body class="admin">
-  <header class="forum-header">
-    <h1>OP.WEB Admin</h1>
-    <a href="/" class="pixel-btn">На форум</a>
-  </header>
-  <main class="panel admin-panel">
-    <section>
-      <h2>Вход администратора</h2>
-      <form id="adminLoginForm">
-        <label>Логин<input name="nickname" value="tegmore" /></label>
-        <label>Пароль<input type="password" name="password" /></label>
-        <button class="pixel-btn" type="submit">Войти</button>
-      </form>
-      <div class="note">Резервный вход: пароль personal242273</div>
-    </section>
-    <section id="adminTools" class="hidden">
-      <h2>Инструменты</h2>
-      <div class="tool-grid">
-        <div>
-          <h3>Разделы</h3>
-          <form id="sectionForm">
-            <label>Название<input name="title" required /></label>
-            <label>Описание<textarea name="description" required></textarea></label>
-            <button class="pixel-btn">Добавить</button>
-          </form>
-        </div>
-        <div>
-          <h3>Назначения</h3>
-          <form id="roleForm">
-            <label>ID пользователя<input name="userId" required /></label>
-            <label>Роль<select name="role"><option value="moderator">Модератор</option><option value="admin">Админ</option></select></label>
-            <button class="pixel-btn">Назначить</button>
-          </form>
-        </div>
-        <div>
-          <h3>Бан</h3>
-          <form id="banForm">
-            <label>ID пользователя<input name="userId" /></label>
-            <label>IP<input name="ip" /></label>
-            <label>Причина<input name="reason" required /></label>
-            <label>Срок (часов)<input type="number" name="hours" /></label>
-            <button class="pixel-btn">Забанить</button>
-          </form>
-        </div>
+<body>
+  <div class="app-shell admin-shell">
+    <header class="forum-header">
+      <div>
+        <p class="eyebrow">панель администратора</p>
+        <h1>OP.WEB</h1>
       </div>
-      <div class="tool-grid">
-        <div>
-          <h3>Статистика</h3>
-          <pre id="adminStats"></pre>
+      <a href="/" class="ghost-btn">На форум</a>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel" id="adminLoginCard">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Доступ</p>
+            <h2>Вход администратора</h2>
+          </div>
+          <small>Резервный пароль: personal242273</small>
         </div>
-        <div>
-          <h3>Логи</h3>
-          <pre id="adminLogs"></pre>
+        <form id="adminLoginForm" class="stack">
+          <label>Логин<input name="nickname" value="tegmore" required /></label>
+          <label>Пароль<input type="password" name="password" required /></label>
+          <button class="accent-btn" type="submit">Войти</button>
+        </form>
+      </section>
+
+      <section class="panel hidden" id="adminWorkspace">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Управление</p>
+            <h2>Интерактивная панель</h2>
+          </div>
+          <div class="actions">
+            <button id="exportUsers" class="ghost-btn" type="button">Скачать пользователей</button>
+            <button id="loadArchive" class="ghost-btn" type="button">Архив</button>
+          </div>
         </div>
-        <div>
-          <h3>Экспорт пользователей</h3>
-          <button id="exportUsers" class="pixel-btn">Скачать CSV</button>
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>Разделы</h3>
+            <form id="sectionForm" class="stack">
+              <label>Название<input name="title" required /></label>
+              <label>Описание<textarea name="description" required></textarea></label>
+              <button class="accent-btn">Добавить</button>
+            </form>
+          </div>
+          <div class="admin-card">
+            <h3>Назначения</h3>
+            <form id="roleForm" class="stack">
+              <label>ID пользователя<input name="userId" required /></label>
+              <label>Роль<select name="role"><option value="moderator">Модератор</option><option value="admin">Админ</option></select></label>
+              <button class="accent-btn">Сохранить</button>
+            </form>
+          </div>
+          <div class="admin-card">
+            <h3>Блокировки</h3>
+            <form id="banForm" class="stack">
+              <label>ID пользователя<input name="userId" /></label>
+              <label>IP<input name="ip" /></label>
+              <label>Причина<input name="reason" required /></label>
+              <label>Срок (часов)<input type="number" name="hours" min="1" required /></label>
+              <button class="danger-btn">Применить</button>
+            </form>
+          </div>
         </div>
-        <div>
-          <h3>Архив тредов</h3>
-          <button id="loadArchive" class="pixel-btn">Показать</button>
-          <pre id="archiveBox"></pre>
+
+        <div class="admin-wide">
+          <div class="admin-card">
+            <div class="panel-head small">
+              <div>
+                <p class="eyebrow">Треды</p>
+                <h3>Менеджер тредов</h3>
+              </div>
+              <div class="filters">
+                <select id="threadSectionFilter"></select>
+                <button id="refreshThreads" class="ghost-btn" type="button">Обновить список</button>
+              </div>
+            </div>
+            <form id="threadSearchForm" class="inline-form">
+              <input name="threadId" placeholder="Поиск по ID (thread-xxxx)" required />
+              <button class="accent-btn" type="submit">Найти</button>
+            </form>
+            <div id="threadResults" class="thread-admin-results"></div>
+          </div>
+
+          <div class="admin-card stats-card">
+            <h3>Статистика и логи</h3>
+            <pre id="adminStats"></pre>
+            <pre id="adminLogs"></pre>
+            <pre id="archiveBox" class="hidden"></pre>
+          </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>OP.WEB · контроль доступа</span>
+    </footer>
+  </div>
+
   <script src="/admin.js" defer></script>
 </body>
 </html>

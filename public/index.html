@@ -45,22 +45,6 @@
           </form>
           <div id="threadView" class="thread-view hidden"></div>
         </section>
-
-        <aside class="panel stats" id="statsPanel">
-          <div class="panel-head">
-            <h2>Статистика</h2>
-            <p>Пульс сообщества</p>
-          </div>
-          <ul id="statsList" class="key-stats"></ul>
-          <div class="panel-head small">
-            <h3>Активность</h3>
-          </div>
-          <ul id="activityBadges" class="badges"></ul>
-          <div class="panel-head small">
-            <h3>Моя статистика</h3>
-          </div>
-          <ul id="userStats" class="user-stats"></ul>
-        </aside>
       </section>
     </main>
 
@@ -118,6 +102,9 @@
         </div>
         <div class="profile-section">
           <h4>Настройки</h4>
+          <label class="file-upload">Аватар
+            <input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/gif" />
+          </label>
           <button id="profileThemeToggle" class="ghost-btn" type="button">Переключить тему</button>
         </div>
         <div class="profile-section hidden" id="adminLinks">
