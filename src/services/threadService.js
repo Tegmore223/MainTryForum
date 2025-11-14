@@ -12,10 +12,11 @@ function resolveNickname(db, userId) {
 
 function normalizeThread(thread, db) {
   if (!thread) return null;
+  const { viewers, ...rest } = thread;
   const normalized = {
-    ...thread,
-    views: thread.views || 0,
-    authorNickname: thread.authorNickname || resolveNickname(db, thread.authorId)
+    ...rest,
+    views: typeof rest.views === 'number' ? rest.views : 0,
+    authorNickname: rest.authorNickname || resolveNickname(db, rest.authorId)
   };
   return normalized;
 }
@@ -76,7 +77,8 @@ function createThread({ sectionId, title, content, authorId, format, attachment 
     highlight: false,
     stats: { replies: 0 },
     banner: '',
-    views: 0
+    views: 0,
+    viewers: []
   };
   if (attachment) {
     const threadId = thread.id;
@@ -254,15 +256,22 @@ function listRecentThreads({ sectionId, limit = 25 } = {}) {
   return threads.slice(0, limit).map((thread) => normalizeThread(thread, db));
 }
 
-function incrementView(id) {
+function incrementView(id, userId) {
   const db = readDb();
   const thread = db.threads.find((t) => t.id === id);
   if (!thread) return null;
-  thread.views = (thread.views || 0) + 1;
-  writeDb(db);
-  cache.invalidate(`thread:${id}`);
-  cache.invalidate(`threads:${thread.sectionId}`);
-  return thread.views;
+  if (!userId) {
+    return thread.views || 0;
+  }
+  thread.viewers = thread.viewers || [];
+  if (!thread.viewers.includes(userId)) {
+    thread.viewers.push(userId);
+    thread.views = (thread.views || 0) + 1;
+    writeDb(db);
+    cache.invalidate(`thread:${id}`);
+    cache.invalidate(`threads:${thread.sectionId}`);
+  }
+  return thread.views || 0;
 }
 
 function collectUserLibrary(userId) {

@@ -292,7 +292,7 @@ async function handleApi(req, res) {
       return;
     }
     const threadId = pathname.split('/').pop();
-    threadService.incrementView(threadId);
+    threadService.incrementView(threadId, user.id);
     const thread = threadService.getThread(threadId);
     if (!thread) {
       sendJson(res, 404, { error: 'not_found' });

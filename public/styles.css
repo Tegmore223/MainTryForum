@@ -883,6 +883,10 @@ textarea {
   gap: 0.3rem;
 }
 
+.complaint-details.clickable {
+  cursor: pointer;
+}
+
 .complaint-list .reporter,
 .complaint-meta {
   font-size: 0.85rem;

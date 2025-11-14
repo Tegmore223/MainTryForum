@@ -28,8 +28,10 @@ function fileComplaint({ authorId, targetType, targetId, reason }) {
   if (normalizedType === 'thread') {
     const thread = db.threads.find((t) => t.id === targetId);
     if (!thread) throw new Error('thread_not_found');
+    complaint.threadId = thread.id;
     complaint.targetTitle = thread.title;
     complaint.targetAuthorNickname = thread.authorNickname || nicknameById(db, thread.authorId);
+    complaint.targetAuthorId = thread.authorId;
     complaint.targetSnippet = (thread.content || '').slice(0, 280);
   } else {
     const post = db.posts.find((p) => p.id === targetId);
@@ -38,6 +40,7 @@ function fileComplaint({ authorId, targetType, targetId, reason }) {
     complaint.threadId = post.threadId;
     complaint.targetTitle = thread ? `Ответ в «${thread.title}»` : 'Ответ';
     complaint.targetAuthorNickname = post.authorNickname || nicknameById(db, post.authorId);
+    complaint.targetAuthorId = post.authorId;
     complaint.targetSnippet = (post.content || '').slice(0, 280);
   }
 

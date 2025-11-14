@@ -50,12 +50,20 @@ async function loadComplaints() {
   data.complaints.forEach((complaint) => {
     const li = document.createElement('li');
     li.innerHTML = `
-      <div class="complaint-details">
+      <div class="complaint-details clickable">
         <strong>${complaint.targetTitle || complaint.targetType} (${complaint.targetId})</strong>
-        <span class="reporter">Жалоба ${complaint.id} от ${complaint.authorNickname}</span>
+        <span class="reporter">Жалоба ${complaint.id} от ${complaint.authorNickname} (${complaint.authorId || '—'})</span>
+        <span>На пользователя: ${complaint.targetAuthorNickname || 'Аноним'} (${complaint.targetAuthorId || '—'})</span>
         <span>${complaint.reason}</span>
         ${complaint.targetSnippet ? `<small class="complaint-meta">${complaint.targetSnippet}</small>` : ''}
       </div>`;
+    const details = li.querySelector('.complaint-details');
+    details.addEventListener('click', () => {
+      const threadId = complaint.threadId || complaint.targetId;
+      if (threadId) {
+        window.open(`/?thread=${threadId}`, '_blank');
+      }
+    });
     const btn = document.createElement('button');
     btn.className = 'ghost-btn';
     btn.textContent = 'Решено';

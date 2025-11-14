@@ -5,7 +5,8 @@ const state = {
   currentSection: null,
   currentThread: null,
   settings: { title: 'OP.WEB', logo: '' },
-  library: { favorites: [], liked: [] }
+  library: { favorites: [], liked: [] },
+  pendingThreadId: null
 };
 
 const onboardingEl = document.getElementById('onboarding');
@@ -22,6 +23,8 @@ const complaintPanel = document.getElementById('complaintPanel');
 const complaintForm = document.getElementById('complaintForm');
 const forumLogoText = document.getElementById('forumLogoText');
 const forumLogoImage = document.getElementById('forumLogoImage');
+const initialParams = new URLSearchParams(window.location.search);
+state.pendingThreadId = initialParams.get('thread') || null;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -80,6 +83,16 @@ async function init() {
   await refreshProfile();
 }
 
+function updateThreadParam(threadId) {
+  const url = new URL(window.location.href);
+  if (threadId) {
+    url.searchParams.set('thread', threadId);
+  } else {
+    url.searchParams.delete('thread');
+  }
+  window.history.replaceState({}, '', url);
+}
+
 function bindAuth() {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
@@ -134,6 +147,7 @@ function bindHomeNavigation() {
       showOnboarding();
       return;
     }
+    state.pendingThreadId = null;
     resetForumView();
   });
 }
@@ -232,7 +246,14 @@ function openComplaint(target) {
   document.getElementById('complaintTitle').textContent = target.title;
   const meta = document.getElementById('complaintMeta');
   if (meta) {
-    meta.textContent = `ID: ${target.id} · Автор: ${target.authorNickname || 'Аноним'}`;
+    const userId = target.authorId ? target.authorId : 'неизвестен';
+    meta.innerHTML = '';
+    const idSpan = document.createElement('span');
+    idSpan.textContent = `ID объекта: ${target.id}`;
+    const br = document.createElement('br');
+    const userSpan = document.createElement('span');
+    userSpan.textContent = `Пользователь: ${target.authorNickname || 'Аноним'} (${userId})`;
+    meta.append(idSpan, br, userSpan);
   }
   complaintForm.reason.value = '';
   complaintPanel.classList.remove('hidden');
@@ -405,6 +426,9 @@ function clearForumState() {
   document.getElementById('sectionsList').innerHTML = '';
   document.getElementById('threadsList').innerHTML = '';
   document.getElementById('threadView').classList.add('hidden');
+  if (!state.pendingThreadId) {
+    updateThreadParam(null);
+  }
 }
 
 function resetForumView() {
@@ -416,6 +440,9 @@ function resetForumView() {
   document.querySelectorAll('.section-card').forEach((el) => el.classList.remove('active'));
   state.currentSection = null;
   state.currentThread = null;
+  if (!state.pendingThreadId) {
+    updateThreadParam(null);
+  }
 }
 
 async function loadSections() {
@@ -438,6 +465,15 @@ async function loadSections() {
     card.addEventListener('click', () => openSection(section));
     list.appendChild(card);
   });
+  if (state.pendingThreadId) {
+    try {
+      await openThread(state.pendingThreadId);
+    } catch (err) {
+      console.warn('Не удалось открыть тред из ссылки', err);
+      state.pendingThreadId = null;
+      updateThreadParam(null);
+    }
+  }
 }
 
 async function openSection(section) {
@@ -478,6 +514,7 @@ async function openSection(section) {
         id: thread.id,
         title: thread.title,
         authorNickname: thread.authorNickname,
+        authorId: thread.authorId,
         type: 'thread'
       });
     });
@@ -488,6 +525,8 @@ async function openSection(section) {
 async function openThread(id) {
   const thread = await request(`/api/threads/${id}`);
   state.currentThread = thread;
+  state.pendingThreadId = null;
+  updateThreadParam(id);
   const view = document.getElementById('threadView');
   view.classList.remove('hidden');
   const replyForm = thread.locked
@@ -536,7 +575,13 @@ async function openThread(id) {
   const complaintBtn = document.getElementById('threadComplaintBtn');
   if (complaintBtn) {
     complaintBtn.addEventListener('click', () =>
-      openComplaint({ id: thread.id, title: thread.title, authorNickname: thread.authorNickname, type: 'thread' })
+      openComplaint({
+        id: thread.id,
+        title: thread.title,
+        authorNickname: thread.authorNickname,
+        authorId: thread.authorId,
+        type: 'thread'
+      })
     );
   }
   view.querySelectorAll('[data-post-complaint]').forEach((btn) => {
@@ -547,6 +592,7 @@ async function openThread(id) {
         id: btn.dataset.postComplaint,
         title: `Ответ в «${thread.title}»`,
         authorNickname: nickname,
+        authorId: btn.dataset.authorId,
         type: 'post'
       });
     });
@@ -555,11 +601,12 @@ async function openThread(id) {
 
 function renderPost(post) {
   const author = post.authorNickname || post.authorId;
+  const authorId = post.authorId || '';
   return `<div class="post" data-post="${post.id}">
     <div class="meta">${author} · ${new Date(post.createdAt).toLocaleString()}</div>
     <div class="post-body">${post.content}</div>
     <div class="post-actions">
-      <button class="ghost-btn tiny" type="button" data-post-complaint="${post.id}" data-author="${encodeURIComponent(author)}">Пожаловаться</button>
+      <button class="ghost-btn tiny" type="button" data-post-complaint="${post.id}" data-author="${encodeURIComponent(author)}" data-author-id="${authorId}">Пожаловаться</button>
     </div>
   </div>`;
 }
