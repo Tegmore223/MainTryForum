@@ -135,6 +135,17 @@
           </div>
         </div>
 
+        <div class="admin-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Жалобы</p>
+              <h3>Очередь рассмотрения</h3>
+            </div>
+            <button id="refreshComplaints" class="ghost-btn" type="button">Обновить</button>
+          </div>
+          <ul id="adminComplaintList" class="complaint-list"></ul>
+        </div>
+
         <div class="admin-card user-table-card">
           <div class="panel-head small">
             <div>
@@ -146,7 +157,7 @@
           <div class="table-wrapper">
             <table id="userTable">
               <thead>
-                <tr><th>Ник</th><th>ID</th><th>E-mail</th><th>IP</th><th>Пароль</th></tr>
+                <tr><th>Ник</th><th>ID</th><th>E-mail</th><th>IP</th></tr>
               </thead>
               <tbody></tbody>
             </table>

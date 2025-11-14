@@ -24,7 +24,7 @@ async function initAdmin() {
       await adminRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       loginCard.classList.add('hidden');
       workspace.classList.remove('hidden');
-      await Promise.all([refreshAdmin(), loadSections(), loadThreads(), loadBranding(), loadUsers()]);
+      await Promise.all([refreshAdmin(), loadSections(), loadThreads(), loadBranding(), loadUsers(), loadComplaints()]);
     } catch (err) {
       alert(err.message);
     }
@@ -131,6 +131,8 @@ async function initAdmin() {
   });
 
   document.getElementById('refreshUsers').addEventListener('click', () => loadUsers());
+  const refreshComplaints = document.getElementById('refreshComplaints');
+  if (refreshComplaints) refreshComplaints.addEventListener('click', () => loadComplaints());
 }
 
 async function loadSections() {
@@ -166,6 +168,8 @@ function threadCard(thread) {
   const frozen = thread.lockReason === 'frozen';
   const blocked = thread.lockReason === 'blocked';
   const preview = (thread.content || '').slice(0, 180);
+  const blockAction = blocked ? 'unblock' : 'block';
+  const blockLabel = blocked ? 'Разблокировать' : 'Заблокировать';
   return `
     <article class="thread-admin-card">
       <header>
@@ -182,7 +186,7 @@ function threadCard(thread) {
         <span class="badge">Просмотры: ${thread.views || 0}</span>
       </div>
       <div class="thread-admin-actions">
-        <button data-thread="${thread.id}" data-action="block" class="ghost-btn">Заблокировать</button>
+        <button data-thread="${thread.id}" data-action="${blockAction}" class="ghost-btn">${blockLabel}</button>
         <button data-thread="${thread.id}" data-action="freeze" class="ghost-btn">${frozen ? 'Разморозить' : 'Заморозить'}</button>
         <button data-thread="${thread.id}" data-action="archive" class="ghost-btn">Архив</button>
         <button data-thread="${thread.id}" data-action="delete" class="danger-btn">Удалить</button>
@@ -193,6 +197,7 @@ function threadCard(thread) {
 async function handleThreadAction(id, action) {
   const endpoints = {
     block: `/api/threads/${id}/block`,
+    unblock: `/api/threads/${id}/unblock`,
     freeze: `/api/threads/${id}/freeze`,
     archive: `/api/threads/${id}/archive`,
     delete: `/api/threads/${id}/delete`
@@ -281,11 +286,44 @@ async function loadUsers() {
           <td>${user.nickname}</td>
           <td>${user.id}</td>
           <td>${user.email || '—'}</td>
-          <td>${user.ip}</td>
-          <td class="mono">${user.password}</td>
+          <td>${user.ip || '—'}</td>
         </tr>`
     )
     .join('');
+}
+
+async function loadComplaints() {
+  const list = document.getElementById('adminComplaintList');
+  if (!list) return;
+  const data = await adminRequest('/api/complaints');
+  list.innerHTML = '';
+  if (!data.complaints.length) {
+    list.innerHTML = '<li class="muted">Жалоб нет</li>';
+    return;
+  }
+  data.complaints.forEach((complaint) => {
+    const li = document.createElement('li');
+    const details = document.createElement('div');
+    details.className = 'complaint-details';
+    details.innerHTML = `
+      <strong>${complaint.targetTitle || complaint.targetType} (${complaint.targetId})</strong>
+      <span class="reporter">Жалоба ${complaint.id} от ${complaint.authorNickname}</span>
+      <span>${complaint.reason}</span>
+      ${complaint.targetSnippet ? `<small class="complaint-meta">${complaint.targetSnippet}</small>` : ''}`;
+    li.appendChild(details);
+    const btn = document.createElement('button');
+    btn.className = 'ghost-btn';
+    btn.textContent = 'Решено';
+    btn.addEventListener('click', async () => {
+      await adminRequest(`/api/complaints/${complaint.id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ result: 'resolved' })
+      });
+      loadComplaints();
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
 }
 
 window.addEventListener('DOMContentLoaded', initAdmin);

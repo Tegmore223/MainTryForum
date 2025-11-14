@@ -49,7 +49,13 @@ async function loadComplaints() {
   }
   data.complaints.forEach((complaint) => {
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${complaint.targetType}</strong> ${complaint.targetId}<br>${complaint.reason}`;
+    li.innerHTML = `
+      <div class="complaint-details">
+        <strong>${complaint.targetTitle || complaint.targetType} (${complaint.targetId})</strong>
+        <span class="reporter">Жалоба ${complaint.id} от ${complaint.authorNickname}</span>
+        <span>${complaint.reason}</span>
+        ${complaint.targetSnippet ? `<small class="complaint-meta">${complaint.targetSnippet}</small>` : ''}
+      </div>`;
     const btn = document.createElement('button');
     btn.className = 'ghost-btn';
     btn.textContent = 'Решено';

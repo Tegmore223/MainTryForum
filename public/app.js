@@ -178,11 +178,12 @@ function bindComplaintPanel() {
     }
     const reason = e.target.reason.value.trim();
     const targetId = e.target.targetId.value;
+    const targetType = e.target.targetType.value || 'thread';
     if (!reason) return;
     try {
       await request('/api/complaints', {
         method: 'POST',
-        body: JSON.stringify({ targetType: 'thread', targetId, reason })
+        body: JSON.stringify({ targetType, targetId, reason })
       });
       alert('Жалоба отправлена');
       e.target.reset();
@@ -221,13 +222,18 @@ function renderCollections(library) {
   applyList(likedList, library.liked || []);
 }
 
-function openComplaint(thread) {
+function openComplaint(target) {
   if (!state.user) {
     showOnboarding();
     return;
   }
-  complaintForm.targetId.value = thread.id;
-  document.getElementById('complaintTitle').textContent = thread.title;
+  complaintForm.targetId.value = target.id;
+  complaintForm.targetType.value = target.type || 'thread';
+  document.getElementById('complaintTitle').textContent = target.title;
+  const meta = document.getElementById('complaintMeta');
+  if (meta) {
+    meta.textContent = `ID: ${target.id} · Автор: ${target.authorNickname || 'Аноним'}`;
+  }
   complaintForm.reason.value = '';
   complaintPanel.classList.remove('hidden');
 }
@@ -293,17 +299,19 @@ function bindProfilePanel() {
     reader.readAsDataURL(file);
   });
 
-  themeToggle.addEventListener('click', async () => {
-    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', next);
-    if (state.user) {
-      try {
-        await request('/api/profile/theme', { method: 'POST', body: JSON.stringify({ theme: next }) });
-      } catch (err) {
-        console.warn(err);
+  if (themeToggle) {
+    themeToggle.addEventListener('change', async () => {
+      const next = themeToggle.checked ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      if (state.user) {
+        try {
+          await request('/api/profile/theme', { method: 'POST', body: JSON.stringify({ theme: next }) });
+        } catch (err) {
+          console.warn(err);
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 async function refreshProfile() {
@@ -311,13 +319,14 @@ async function refreshProfile() {
     const data = await request('/api/me');
     state.user = data.user;
     profileLabel.textContent = `${state.user.nickname}`;
-    document.documentElement.setAttribute('data-theme', state.user.theme || 'light');
+    document.documentElement.setAttribute('data-theme', state.user.theme || 'dark');
     updateProfileView(state.user);
     showForum();
     await loadSections();
   } catch (err) {
     state.user = null;
     profileLabel.textContent = 'Гость';
+    document.documentElement.setAttribute('data-theme', 'dark');
     showOnboarding();
     clearForumState();
   }
@@ -330,6 +339,7 @@ function updateProfileView(user) {
   const statsEl = document.getElementById('profileStats');
   const adminLinks = document.getElementById('adminLinks');
   const avatar = document.getElementById('profileAvatar');
+  const themeToggle = document.getElementById('profileThemeToggle');
 
   if (!user) {
     nicknameEl.textContent = 'Гость';
@@ -338,6 +348,7 @@ function updateProfileView(user) {
     statsEl.innerHTML = '<li>Нет данных</li>';
     adminLinks.classList.add('hidden');
     avatar.style.backgroundImage = '';
+    if (themeToggle) themeToggle.checked = true;
     return;
   }
 
@@ -354,7 +365,10 @@ function updateProfileView(user) {
     <li>Лайки: ${user.likes}</li>
     <li>Благодарности: ${user.thanks}</li>
     <li>Ответы: ${user.answers}</li>
-    <li>Избранное: ${user.favorites.length}</li>`;
+    <li>Избранное: ${(user.favorites || []).length}</li>`;
+  if (themeToggle) {
+    themeToggle.checked = (user.theme || 'dark') === 'dark';
+  }
   if (user.role === 'admin') {
     adminLinks.classList.remove('hidden');
     adminLinks.querySelector('[data-link="/admin.html"]').classList.remove('hidden');
@@ -460,7 +474,12 @@ async function openSection(section) {
     div.addEventListener('click', () => openThread(thread.id));
     div.querySelector('.complaint-btn').addEventListener('click', (event) => {
       event.stopPropagation();
-      openComplaint(thread);
+      openComplaint({
+        id: thread.id,
+        title: thread.title,
+        authorNickname: thread.authorNickname,
+        type: 'thread'
+      });
     });
     container.appendChild(div);
   });
@@ -516,13 +535,33 @@ async function openThread(id) {
   });
   const complaintBtn = document.getElementById('threadComplaintBtn');
   if (complaintBtn) {
-    complaintBtn.addEventListener('click', () => openComplaint(thread));
+    complaintBtn.addEventListener('click', () =>
+      openComplaint({ id: thread.id, title: thread.title, authorNickname: thread.authorNickname, type: 'thread' })
+    );
   }
+  view.querySelectorAll('[data-post-complaint]').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const nickname = decodeURIComponent(btn.dataset.author || '');
+      openComplaint({
+        id: btn.dataset.postComplaint,
+        title: `Ответ в «${thread.title}»`,
+        authorNickname: nickname,
+        type: 'post'
+      });
+    });
+  });
 }
 
 function renderPost(post) {
   const author = post.authorNickname || post.authorId;
-  return `<div class="post"><div class="meta">${author} · ${new Date(post.createdAt).toLocaleString()}</div><div>${post.content}</div></div>`;
+  return `<div class="post" data-post="${post.id}">
+    <div class="meta">${author} · ${new Date(post.createdAt).toLocaleString()}</div>
+    <div class="post-body">${post.content}</div>
+    <div class="post-actions">
+      <button class="ghost-btn tiny" type="button" data-post-complaint="${post.id}" data-author="${encodeURIComponent(author)}">Пожаловаться</button>
+    </div>
+  </div>`;
 }
 
 async function reactThread(id, type) {

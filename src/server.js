@@ -364,6 +364,20 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname.match(/\/api\/threads\/[^/]+\/unblock/) && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin', 'moderator'])) return;
+    const threadId = pathname.split('/')[3];
+    try {
+      const thread = threadService.unlockThread(threadId, user.nickname);
+      sendJson(res, 200, thread);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
   if (pathname.match(/\/api\/threads\/[^/]+\/archive/) && method === 'POST') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -410,8 +424,12 @@ async function handleApi(req, res) {
     const user = requireAuth(req, res);
     if (!user) return;
     const body = await parseBody(req);
-    const complaint = fileComplaint({ ...body, authorId: user.id });
-    sendJson(res, 201, complaint);
+    try {
+      const complaint = fileComplaint({ ...body, targetType: body.targetType || 'thread', authorId: user.id });
+      sendJson(res, 201, complaint);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
     return;
   }
 
@@ -534,7 +552,7 @@ async function handleApi(req, res) {
     if (!user) return;
     if (!requireRole(user, res, ['admin'])) return;
     const users = listUsers();
-    const csv = ['nickname,id,email,password'].concat(users.map((u) => `${u.nickname},${u.id},${u.email},${u.passwordHash}`)).join('\n');
+    const csv = ['nickname,id,email,ip'].concat(users.map((u) => `${u.nickname},${u.id},${u.email || ''},${u.ip || ''}`)).join('\n');
     res.writeHead(200, {
       'Content-Type': 'text/csv',
       'Content-Disposition': 'attachment; filename="users.csv"'
@@ -552,7 +570,6 @@ async function handleApi(req, res) {
       id: entry.id,
       email: entry.email,
       ip: entry.ip,
-      password: entry.passwordHash,
       createdAt: entry.createdAt
     }));
     sendJson(res, 200, { users });

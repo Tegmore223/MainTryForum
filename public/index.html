@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="light">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -65,13 +65,14 @@
         <p class="eyebrow">анонимный форум</p>
         <h2>Войдите в OP.WEB</h2>
         <p>Регистрация требуется, чтобы просматривать разделы. Только никнейм и пароль — электронная почта опциональна.</p>
+        <small class="muted">E-mail нужен только для восстановления и его можно не указывать.</small>
       </div>
       <div class="auth-grid">
         <form id="registerForm" class="auth-card">
           <h3>Регистрация</h3>
           <label>Никнейм<input name="nickname" required maxlength="24" autocomplete="nickname" /></label>
           <label>Пароль<input type="password" name="password" required autocomplete="new-password" /></label>
-          <label>E-mail (опционально)<input type="email" name="email" autocomplete="email" placeholder="Можно оставить пустым" /></label>
+          <label>E-mail (необязательно)<input type="email" name="email" autocomplete="email" placeholder="Можно оставить пустым" /></label>
           <label>Ответ на капчу<input name="captchaAnswer" required /></label>
           <input type="hidden" name="captchaId" />
           <div id="captchaQuestion" class="captcha"></div>
@@ -111,7 +112,11 @@
           <label class="file-upload">Аватар
             <input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/gif" />
           </label>
-          <button id="profileThemeToggle" class="ghost-btn" type="button">Переключить тему</button>
+          <label class="theme-toggle" for="profileThemeToggle">
+            <span>Тёмная тема</span>
+            <input type="checkbox" id="profileThemeToggle" checked />
+            <span class="toggle-slider" aria-hidden="true"></span>
+          </label>
         </div>
         <div class="profile-section hidden" id="adminLinks">
           <h4>Управление</h4>
@@ -160,6 +165,8 @@
       </div>
       <form id="complaintForm" class="stack">
         <input type="hidden" name="targetId" />
+        <input type="hidden" name="targetType" />
+        <p id="complaintMeta" class="complaint-meta"></p>
         <textarea name="reason" rows="4" required placeholder="Опишите проблему"></textarea>
         <button class="danger-btn" type="submit">Отправить</button>
       </form>

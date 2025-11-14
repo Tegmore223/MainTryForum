@@ -30,7 +30,7 @@ function ensureDefaultAdmin() {
       thanks: 0,
       favorites: [],
       answers: 0,
-      theme: 'light',
+      theme: 'dark',
       avatar: '',
       badges: []
     };
@@ -59,7 +59,7 @@ function createUser({ nickname, password, email, ip }) {
     thanks: 0,
     favorites: [],
     answers: 0,
-    theme: 'light',
+    theme: 'dark',
     avatar: '',
     badges: []
   };

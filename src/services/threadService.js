@@ -182,6 +182,23 @@ function lockThread(id, actor) {
   return thread;
 }
 
+function unlockThread(id, actor) {
+  const db = readDb();
+  const thread = db.threads.find((t) => t.id === id);
+  if (!thread) throw new Error('Thread not found');
+  thread.locked = false;
+  thread.lockReason = null;
+  thread.frozen = false;
+  if (thread.content === 'Этот тред был удалён за нарушение правил.') {
+    thread.content = 'Тред разблокирован. Исторический контент был удалён при блокировке.';
+  }
+  writeDb(db);
+  cache.invalidate(`thread:${id}`);
+  cache.invalidate('threads');
+  logAction('unlock_thread', actor, { threadId: id });
+  return thread;
+}
+
 function freezeThread(id, actor) {
   const db = readDb();
   const thread = db.threads.find((t) => t.id === id);
@@ -262,6 +279,7 @@ module.exports = {
   replyThread,
   toggleReaction,
   lockThread,
+  unlockThread,
   freezeThread,
   archiveThread,
   deleteThread,

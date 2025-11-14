@@ -400,6 +400,21 @@ textarea {
   margin-bottom: 0.4rem;
 }
 
+.post-body {
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+
+.post-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ghost-btn.tiny {
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+}
+
 .key-stats,
 .badges,
 .user-stats,
@@ -512,13 +527,14 @@ textarea {
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 2rem;
   z-index: 10;
+  overflow-y: auto;
 }
 
 .profile-card {
-  width: min(360px, 100%);
+  width: min(420px, 100%);
   background: var(--panel);
   border-radius: 24px;
   border: 1px solid var(--border);
@@ -526,12 +542,12 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
-  max-height: 90vh;
+  max-height: min(90vh, 640px);
   overflow-y: auto;
 }
 
 .profile-card.compact {
-  width: min(520px, 95%);
+  width: min(560px, 95%);
 }
 
 .profile-card__head {
@@ -552,6 +568,57 @@ textarea {
   flex-direction: column;
   gap: 0.4rem;
   font-size: 0.9rem;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  position: relative;
+  padding-right: 60px;
+}
+
+.theme-toggle input {
+  position: absolute;
+  opacity: 0;
+  right: 0;
+  top: 50%;
+  width: 48px;
+  height: 26px;
+  transform: translateY(-50%);
+}
+
+.theme-toggle .toggle-slider {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.theme-toggle .toggle-slider::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.theme-toggle input:checked + .toggle-slider {
+  background: #1fa47b;
+}
+
+.theme-toggle input:checked + .toggle-slider::after {
+  transform: translateX(22px);
+  background: #fff;
 }
 
 .collections-grid {
@@ -810,6 +877,18 @@ textarea {
   text-align: center;
 }
 
+.complaint-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.complaint-list .reporter,
+.complaint-meta {
+  font-size: 0.85rem;
+  color: var(--subtle);
+}
+
 .admin-card pre {
   background: var(--bg);
   padding: 0.8rem;
@@ -901,5 +980,29 @@ textarea {
   .complaint-list li {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .onboarding {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .onboarding-card {
+    border-radius: 20px;
+    padding: 1.25rem;
+  }
+
+  .auth-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card,
+  .profile-card.compact {
+    width: 100%;
+    max-height: none;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
   }
 }
