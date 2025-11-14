@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB Форум</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="forum-header">
+      <button id="homeButton" class="logo-button" type="button" aria-label="На главную">
+        <div class="logo-stack">
+          <p class="eyebrow">анонимный форум</p>
+          <span id="forumLogoText">OP.WEB</span>
+        </div>
+        <img id="forumLogoImage" class="logo-image hidden" alt="Логотип форума" />
+      </button>
+      <div class="header-actions">
+        <button id="collectionsBtn" class="ghost-btn" type="button" aria-label="Коллекции" title="Избранные и лайкнутые треды">★</button>
+        <button id="profileBtn" class="profile-chip" type="button">
+          <span id="profileLabel">Гость</span>
+          <span class="avatar" id="profileAvatar"></span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="forumShell" class="layout hidden">
+        <section class="panel sections emphasis">
+          <div class="panel-head">
+            <h2>Разделы</h2>
+            <p>Выберите тему, чтобы просматривать треды.</p>
+          </div>
+          <div id="sectionsList" class="section-list"></div>
+        </section>
+
+        <section class="panel threads" id="threadsPanel">
+          <div class="threads-header">
+            <div>
+              <p class="eyebrow">Сейчас</p>
+              <h2 id="currentSectionTitle">Выберите раздел</h2>
+            </div>
+            <button id="newThreadBtn" class="accent-btn" type="button">Создать тред</button>
+          </div>
+          <div id="threadsList" class="threads-list"></div>
+          <form id="threadForm" class="create-thread hidden">
+            <label>Заголовок<input name="title" required maxlength="120" /></label>
+            <label>Текст<textarea name="content" rows="4" required></textarea></label>
+            <button class="accent-btn" type="submit">Публиковать</button>
+          </form>
+          <div id="threadView" class="thread-view hidden"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>© OP.WEB · без компромиссов в приватности</span>
+    </footer>
+  </div>
+
+  <section id="onboarding" class="onboarding">
+    <div class="onboarding-card">
+      <div class="onboarding-hero">
+        <p class="eyebrow">анонимный форум</p>
+        <h2>Войдите в OP.WEB</h2>
+        <p>Регистрация требуется, чтобы просматривать разделы. Только никнейм и пароль — электронная почта опциональна.</p>
+        <small class="muted">E-mail нужен только для восстановления и его можно не указывать.</small>
+      </div>
+      <div class="auth-grid">
+        <form id="registerForm" class="auth-card">
+          <h3>Регистрация</h3>
+          <label>Никнейм<input name="nickname" required maxlength="24" autocomplete="nickname" /></label>
+          <label>Пароль<input type="password" name="password" required autocomplete="new-password" /></label>
+          <label>E-mail (необязательно)<input type="email" name="email" autocomplete="email" placeholder="Можно оставить пустым" /></label>
+          <label>Ответ на капчу<input name="captchaAnswer" required /></label>
+          <input type="hidden" name="captchaId" />
+          <div id="captchaQuestion" class="captcha"></div>
+          <button class="accent-btn" type="submit">Зарегистрироваться</button>
+        </form>
+        <form id="loginForm" class="auth-card muted">
+          <h3>Вход</h3>
+          <label>Никнейм<input name="nickname" required autocomplete="username" /></label>
+          <label>Пароль<input type="password" name="password" required autocomplete="current-password" /></label>
+          <button class="ghost-btn" type="submit">Войти</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div id="profilePanel" class="profile-panel hidden">
+    <div class="profile-card">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Профиль</p>
+          <h3 id="profileNickname">Гость</h3>
+          <p id="profileRole">Не авторизован</p>
+        </div>
+        <button id="profileClose" class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <div class="profile-card__body">
+        <div class="profile-section">
+          <h4>Данные</h4>
+          <ul id="profileDetails" class="profile-list"></ul>
+        </div>
+        <div class="profile-section">
+          <h4>Статистика</h4>
+          <ul id="profileStats" class="profile-list"></ul>
+        </div>
+        <div class="profile-section">
+          <h4>Настройки</h4>
+          <label class="file-upload">Аватар
+            <input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/gif" />
+          </label>
+          <label class="theme-toggle" for="profileThemeToggle">
+            <span>Тёмная тема</span>
+            <input type="checkbox" id="profileThemeToggle" checked />
+            <span class="toggle-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="profile-section hidden" id="adminLinks">
+          <h4>Управление</h4>
+          <div class="link-row">
+            <button data-link="/admin.html" class="accent-btn" type="button">Админ-панель</button>
+            <button data-link="/moderator.html" class="ghost-btn" type="button">Модерация</button>
+          </div>
+        </div>
+        <div class="profile-section">
+          <button id="logoutBtn" class="danger-btn" type="button">Выйти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="collectionsPanel" class="profile-panel hidden">
+    <div class="profile-card compact">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Коллекции</p>
+          <h3>Избранное и лайки</h3>
+        </div>
+        <button data-close-collections class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <div class="collections-grid">
+        <section>
+          <h4>Избранные</h4>
+          <ul id="favoriteList" class="collection-list"></ul>
+        </section>
+        <section>
+          <h4>Лайкнутые</h4>
+          <ul id="likedList" class="collection-list"></ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="complaintPanel" class="profile-panel hidden">
+    <div class="profile-card compact">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Жалоба</p>
+          <h3 id="complaintTitle">Тред</h3>
+        </div>
+        <button data-close-complaint class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <form id="complaintForm" class="stack">
+        <input type="hidden" name="targetId" />
+        <input type="hidden" name="targetType" />
+        <p id="complaintMeta" class="complaint-meta"></p>
+        <textarea name="reason" rows="4" required placeholder="Опишите проблему"></textarea>
+        <button class="danger-btn" type="submit">Отправить</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
