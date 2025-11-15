@@ -40,12 +40,8 @@ const complaintForm = document.getElementById('complaintForm');
 const forumLogoText = document.getElementById('forumLogoText');
 const forumLogoImage = document.getElementById('forumLogoImage');
 const boardTicker = document.getElementById('boardTicker');
-const twoFactorModal = document.getElementById('twoFactorModal');
-const twoFactorForm = document.getElementById('twoFactorForm');
-const cancelTwoFactor = document.getElementById('cancelTwoFactor');
 const initialParams = new URLSearchParams(window.location.search);
 state.pendingThreadId = initialParams.get('thread') || null;
-let twoFactorCallback = null;
 const DEVICE_MODE_KEY = 'opweb-device-mode';
 
 async function request(url, options = {}) {
@@ -75,12 +71,11 @@ function escapeHtml(text) {
 }
 
 function renderRichText(text) {
-  const safe = escapeHtml(text || '').trim();
-  if (!safe) return '<p></p>';
-  return safe
-    .split(/\n{2,}/)
-    .map((block) => block.replace(/\n/g, '<br>'))
-    .map((block) => `<p>${block}</p>`)
+  const safe = escapeHtml(text || '');
+  if (!safe.trim()) return '<p class="text-block"></p>';
+  const blocks = safe.split(/\n{2,}/).map((block) => block.replace(/\r?\n/g, '\n'));
+  return blocks
+    .map((block) => `<p class="text-block">${block.replace(/\n/g, '<br>')}</p>`)
     .join('');
 }
 
@@ -190,7 +185,6 @@ async function init() {
   bindCollectionsPanel();
   bindMessengerPanel();
   bindComplaintPanel();
-  bindTwoFactorModal();
   await loadCaptcha();
   await refreshProfile();
 }
@@ -213,14 +207,7 @@ function bindAuth() {
     const data = Object.fromEntries(new FormData(loginForm));
     data.remember = loginForm.remember ? loginForm.remember.checked : false;
     try {
-      const result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
-      if (result.twoFactor) {
-        openTwoFactorModal(result.challengeId, async () => {
-          await refreshProfile();
-          loginForm.reset();
-        });
-        return;
-      }
+      await request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       await refreshProfile();
     } catch (err) {
       alert(err.message);
@@ -407,45 +394,6 @@ function bindComplaintPanel() {
       alert(err.message);
     }
   });
-}
-
-function bindTwoFactorModal() {
-  if (!twoFactorModal || !twoFactorForm) return;
-  twoFactorForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = Object.fromEntries(new FormData(twoFactorForm));
-    try {
-      await request('/api/auth/verify-2fa', { method: 'POST', body: JSON.stringify(formData) });
-      closeTwoFactorModal();
-      if (typeof twoFactorCallback === 'function') {
-        const callback = twoFactorCallback;
-        twoFactorCallback = null;
-        await callback();
-      }
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-  if (cancelTwoFactor) {
-    cancelTwoFactor.addEventListener('click', () => {
-      closeTwoFactorModal();
-      twoFactorCallback = null;
-    });
-  }
-}
-
-function openTwoFactorModal(challengeId, onSuccess) {
-  if (!twoFactorModal || !twoFactorForm) return;
-  twoFactorForm.challengeId.value = challengeId;
-  twoFactorForm.code.value = '';
-  twoFactorCallback = onSuccess;
-  twoFactorModal.classList.remove('hidden');
-}
-
-function closeTwoFactorModal() {
-  if (!twoFactorModal || !twoFactorForm) return;
-  twoFactorForm.reset();
-  twoFactorModal.classList.add('hidden');
 }
 
 async function loadLibrary() {

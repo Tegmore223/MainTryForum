@@ -16,7 +16,6 @@ module.exports = {
   ADMIN_PASSWORD: 'public242',
   ADMIN_BACKUP_PASSWORD: 'personal242273',
   DATA_SECRET: process.env.DATA_SECRET || 'opweb-data-secret',
-  TWO_FACTOR_EXPIRY_MS: 1000 * 60 * 5,
   EMAIL_HOST: process.env.EMAIL_HOST || '',
   EMAIL_PORT: Number(process.env.EMAIL_PORT || 465),
   EMAIL_SECURE: process.env.EMAIL_SECURE ? process.env.EMAIL_SECURE === 'true' : true,

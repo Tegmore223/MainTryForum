@@ -51,6 +51,18 @@
       </div>
     </header>
 
+    <nav class="legacy-nav">
+      <div class="nav-links">
+        <button class="nav-link" type="button">Главная</button>
+        <button class="nav-link" type="button">Темы</button>
+        <button class="nav-link" type="button">Медиа</button>
+        <button class="nav-link" type="button">FAQ</button>
+      </div>
+      <div class="nav-search">
+        <input id="navSearch" type="search" placeholder="Поиск по тредам и авторам" aria-label="Поиск" />
+      </div>
+    </nav>
+
     <main>
       <section class="board-hero" id="boardHero">
         <div class="board-hero__copy">
@@ -259,19 +271,6 @@
         <button class="danger-btn" type="submit">Отправить</button>
       </form>
     </div>
-  </div>
-
-  <div id="twoFactorModal" class="twofactor hidden">
-    <form id="twoFactorForm" class="twofactor-card">
-      <h3>Подтверждение входа</h3>
-      <p>На ваш e-mail отправлен код. Введите его, чтобы завершить авторизацию.</p>
-      <input type="text" name="code" placeholder="123456" maxlength="6" required />
-      <input type="hidden" name="challengeId" />
-      <div class="actions">
-        <button type="submit" class="accent-btn">Подтвердить</button>
-        <button type="button" id="cancelTwoFactor" class="ghost-btn">Отмена</button>
-      </div>
-    </form>
   </div>
 
   <script src="/app.js" defer></script>

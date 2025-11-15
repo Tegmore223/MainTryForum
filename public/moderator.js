@@ -8,10 +8,6 @@ async function modRequest(url, options = {}) {
   return res.json();
 }
 
-let modTwoFactorModal;
-let modTwoFactorForm;
-let modCancelTwoFactor;
-let modTwoFactorCallback = null;
 let loginCardEl;
 let toolsEl;
 
@@ -19,19 +15,11 @@ async function initMod() {
   const loginForm = document.getElementById('modLoginForm');
   toolsEl = document.getElementById('modTools');
   loginCardEl = document.getElementById('modLoginCard');
-  modTwoFactorModal = document.getElementById('modTwoFactor');
-  modTwoFactorForm = document.getElementById('modTwoFactorForm');
-  modCancelTwoFactor = document.getElementById('modCancelTwoFactor');
-  bindModTwoFactor();
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm));
     try {
-      const result = await modRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
-      if (result.twoFactor) {
-        openModTwoFactor(result.challengeId);
-        return;
-      }
+      await modRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       await enterModTools();
     } catch (err) {
       alert(err.message);
@@ -96,45 +84,6 @@ async function loadComplaints() {
     li.appendChild(btn);
     list.appendChild(li);
   });
-}
-
-function bindModTwoFactor() {
-  if (!modTwoFactorForm) return;
-  modTwoFactorForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(modTwoFactorForm));
-    try {
-      await modRequest('/api/auth/verify-2fa', { method: 'POST', body: JSON.stringify(payload) });
-      closeModTwoFactor();
-      if (typeof modTwoFactorCallback === 'function') {
-        const cb = modTwoFactorCallback;
-        modTwoFactorCallback = null;
-        await cb();
-      }
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-  if (modCancelTwoFactor) {
-    modCancelTwoFactor.addEventListener('click', () => {
-      modTwoFactorCallback = null;
-      closeModTwoFactor();
-    });
-  }
-}
-
-function openModTwoFactor(challengeId) {
-  if (!modTwoFactorModal || !modTwoFactorForm) return;
-  modTwoFactorForm.challengeId.value = challengeId;
-  modTwoFactorForm.code.value = '';
-  modTwoFactorCallback = () => enterModTools();
-  modTwoFactorModal.classList.remove('hidden');
-}
-
-function closeModTwoFactor() {
-  if (!modTwoFactorModal || !modTwoFactorForm) return;
-  modTwoFactorForm.reset();
-  modTwoFactorModal.classList.add('hidden');
 }
 
 window.addEventListener('DOMContentLoaded', initMod);

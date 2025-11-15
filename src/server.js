@@ -16,22 +16,18 @@ const { fileComplaint } = moderationService;
 const { readDb, writeDb } = require('./utils/storage');
 const { createId } = require('./utils/id');
 const { logAction } = require('./services/logService');
-const { sendTwoFactorCode } = require('./services/emailService');
 const messageService = require('./services/messageService');
 const {
   PORT,
   CAPTCHA_EXPIRY_MS,
   ADMIN_LOGIN,
   ADMIN_PASSWORD,
-  ADMIN_BACKUP_PASSWORD,
-  TWO_FACTOR_EXPIRY_MS,
-  ADMIN_ALERT_EMAIL
+  ADMIN_BACKUP_PASSWORD
 } = require('./config');
 
 ensureDefaultAdmin();
 
 const captchaStore = new Map();
-const twoFactorChallenges = new Map();
 const mimeTypes = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -102,30 +98,6 @@ function cleanExpiredCaptchas() {
 }
 
 setInterval(cleanExpiredCaptchas, 10000);
-
-function issueTwoFactorChallenge(user) {
-  const challengeId = createId('2fa-');
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  twoFactorChallenges.set(challengeId, {
-    userId: user.id,
-    code,
-    expires: Date.now() + TWO_FACTOR_EXPIRY_MS
-  });
-  const destination = user.email || ADMIN_ALERT_EMAIL;
-  sendTwoFactorCode(destination, code);
-  return challengeId;
-}
-
-function cleanTwoFactor() {
-  const now = Date.now();
-  [...twoFactorChallenges.entries()].forEach(([key, entry]) => {
-    if (entry.expires < now) {
-      twoFactorChallenges.delete(key);
-    }
-  });
-}
-
-setInterval(cleanTwoFactor, 15000);
 
 function serveStatic(req, res) {
   let filePath = path.join(__dirname, '..', 'public', req.url === '/' ? 'index.html' : req.url);
@@ -251,35 +223,6 @@ async function handleApi(req, res) {
     }
     setCookie(res, 'opweb_token', token, cookieOptions);
     sendJson(res, 200, { user: { nickname: user.nickname, role: user.role } });
-    return;
-  }
-
-  if (pathname === '/api/auth/verify-2fa' && method === 'POST') {
-    const body = await parseBody(req);
-    const challenge = twoFactorChallenges.get(body.challengeId);
-    if (!challenge) {
-      sendJson(res, 400, { error: 'challenge_not_found' });
-      return;
-    }
-    if (challenge.expires < Date.now()) {
-      twoFactorChallenges.delete(body.challengeId);
-      sendJson(res, 400, { error: 'challenge_expired' });
-      return;
-    }
-    if (String(challenge.code) !== String(body.code || '').trim()) {
-      sendJson(res, 400, { error: 'code_invalid' });
-      return;
-    }
-    const adminUser = getUserById(challenge.userId);
-    if (!adminUser || adminUser.role !== 'admin') {
-      sendJson(res, 400, { error: 'user_invalid' });
-      return;
-    }
-    twoFactorChallenges.delete(body.challengeId);
-    const token = signToken({ userId: adminUser.id });
-    setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
-    logAction('two_factor_verified', adminUser.nickname, {});
-    sendJson(res, 200, { user: { nickname: adminUser.nickname, role: adminUser.role } });
     return;
   }
 
