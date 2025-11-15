@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "id": "user-78ec01ba92db4648",
+      "nickname": "tegmore",
+      "passwordHash": "874d0ee71876c6ed9f6db940d2691105:ca356f7d5ab2470e55832a330da25f1b2640867c1ce72aa5daf2d404fab253063aa28ebdfebda551a39240950e18d105549d2c780b7f65ff1c0086982cfb3bc6",
+      "email": "",
+      "ip": "system",
+      "role": "admin",
+      "createdAt": "2025-11-14T19:28:53.873Z",
+      "reputation": 0,
+      "likes": 0,
+      "thanks": 0,
+      "favorites": [],
+      "answers": 0,
+      "theme": "dark",
+      "avatar": "",
+      "badges": []
+    }
+  ],
+  "sections": [],
+  "threads": [],
+  "posts": [],
+  "complaints": [],
+  "bans": [],
+  "logs": [],
+  "archivedThreads": [],
+  "settings": {
+    "title": "OP.WEB",
+    "logo": ""
+  }
+}
