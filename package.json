@@ -1,0 +1,16 @@
+{
+  "name": "opweb",
+  "version": "1.0.0",
+  "description": "OP.WEB anonymous forum platform",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "node scripts/build.js"
+  },
+  "keywords": ["forum", "opweb"],
+  "author": "OP.WEB",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {},
+  "devDependencies": {}
+}
