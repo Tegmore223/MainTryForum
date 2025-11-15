@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB — Администрирование</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell admin-shell">
+    <header class="forum-header">
+      <div>
+        <p class="eyebrow">панель администратора</p>
+        <h1>OP.WEB</h1>
+      </div>
+      <a href="/" class="ghost-btn">На форум</a>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel" id="adminLoginCard">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Доступ</p>
+            <h2>Вход администратора</h2>
+          </div>
+          <small>Резервный пароль: personal242273</small>
+        </div>
+        <form id="adminLoginForm" class="stack">
+          <label>Логин<input name="nickname" value="tegmore" required /></label>
+          <label>Пароль<input type="password" name="password" required /></label>
+          <label class="remember-row">
+            <input type="checkbox" name="remember" checked />
+            <span>Запомнить сеанс на этом устройстве</span>
+          </label>
+          <button class="accent-btn" type="submit">Войти</button>
+        </form>
+      </section>
+
+      <section class="panel hidden" id="adminWorkspace">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Управление</p>
+            <h2>Интерактивная панель</h2>
+          </div>
+          <div class="actions">
+            <button id="exportUsers" class="ghost-btn" type="button">CSV пользователей</button>
+            <button id="loadArchive" class="ghost-btn" type="button">Архив</button>
+          </div>
+        </div>
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>Разделы</h3>
+            <form id="sectionForm" class="stack">
+              <label>Название<input name="title" required /></label>
+              <label>Описание<textarea name="description" required></textarea></label>
+              <button class="accent-btn">Добавить</button>
+            </form>
+          </div>
+          <div class="admin-card">
+            <h3>Назначения</h3>
+            <form id="roleForm" class="stack">
+              <label>ID пользователя<input name="userId" required /></label>
+              <label>Роль<select name="role"><option value="moderator">Модератор</option><option value="admin">Админ</option></select></label>
+              <button class="accent-btn">Сохранить</button>
+            </form>
+          </div>
+          <div class="admin-card">
+            <h3>Блокировки</h3>
+            <form id="banForm" class="stack">
+              <label>ID пользователя<input name="userId" /></label>
+              <label>IP<input name="ip" /></label>
+              <label>Причина<input name="reason" required /></label>
+              <label>Срок (часов)<input type="number" name="hours" min="1" required /></label>
+              <button class="danger-btn">Применить</button>
+            </form>
+          </div>
+          <div class="admin-card" id="banListCard">
+            <h3>Активные баны</h3>
+            <ul id="banList" class="complaint-list compact"></ul>
+          </div>
+        </div>
+
+        <div class="admin-card brand-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Оформление</p>
+              <h3>Логотип и название форума</h3>
+            </div>
+            <div class="logo-preview">
+              <img id="logoPreview" alt="Логотип" />
+            </div>
+          </div>
+          <form id="brandingForm" class="stack">
+            <label>Название форума<input name="title" maxlength="80" /></label>
+            <label class="file-upload">PNG-логотип<input type="file" id="logoUpload" accept="image/png" /></label>
+            <div class="actions">
+              <button class="accent-btn" type="submit">Сохранить</button>
+              <button id="removeLogo" class="ghost-btn" type="button">Удалить логотип</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="admin-wide">
+          <div class="admin-card">
+            <div class="panel-head small">
+              <div>
+                <p class="eyebrow">Треды</p>
+                <h3>Менеджер тредов</h3>
+              </div>
+              <div class="filters">
+                <select id="threadSectionFilter"></select>
+                <button id="refreshThreads" class="ghost-btn" type="button">Обновить список</button>
+              </div>
+            </div>
+            <form id="threadSearchForm" class="inline-form">
+              <input name="threadId" placeholder="Поиск по ID (thread-xxxx)" required />
+              <button class="accent-btn" type="submit">Найти</button>
+            </form>
+            <div id="threadResults" class="thread-admin-results"></div>
+          </div>
+
+          <div class="admin-card stats-card">
+            <div class="panel-head small">
+              <div>
+                <p class="eyebrow">Статистика</p>
+                <h3>Обзор активности</h3>
+              </div>
+            </div>
+            <div id="statsSummary" class="stats-summary"></div>
+            <div class="chart-grid">
+              <canvas id="threadsChart" width="320" height="180"></canvas>
+              <canvas id="postsChart" width="320" height="180"></canvas>
+            </div>
+            <div class="top-sections">
+              <h4>Топ разделы</h4>
+              <ul id="topSections"></ul>
+            </div>
+            <div class="log-wrap">
+              <h4>Логи</h4>
+              <pre id="adminLogs"></pre>
+            </div>
+            <pre id="archiveBox" class="hidden"></pre>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Жалобы</p>
+              <h3>Очередь рассмотрения</h3>
+            </div>
+            <button id="refreshComplaints" class="ghost-btn" type="button">Обновить</button>
+          </div>
+          <ul id="adminComplaintList" class="complaint-list"></ul>
+        </div>
+
+        <div class="admin-card user-table-card">
+          <div class="panel-head small">
+            <div>
+              <p class="eyebrow">Пользователи</p>
+              <h3>Таблица аккаунтов</h3>
+            </div>
+            <button id="refreshUsers" class="ghost-btn" type="button">Обновить</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="userTable">
+              <thead>
+                <tr><th>Ник</th><th>ID</th><th>E-mail</th><th>IP</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>OP.WEB · контроль доступа</span>
+    </footer>
+  </div>
+
+  <script src="/admin.js" defer></script>
+</body>
+</html>
