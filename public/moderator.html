@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP.WEB — Модерация</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell admin-shell">
+    <header class="forum-header">
+      <div>
+        <p class="eyebrow">инструменты модератора</p>
+        <h1>OP.WEB</h1>
+      </div>
+      <a href="/" class="ghost-btn">На форум</a>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel" id="modLoginCard">
+        <div class="panel-head">
+          <h2>Вход модератора</h2>
+        </div>
+        <form id="modLoginForm" class="stack">
+          <label>Ник<input name="nickname" required /></label>
+          <label>Пароль<input type="password" name="password" required /></label>
+          <button class="accent-btn" type="submit">Войти</button>
+        </form>
+      </section>
+
+      <section class="panel hidden" id="modTools">
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>Жалобы</h3>
+            <ul id="complaintList" class="complaint-list"></ul>
+          </div>
+          <div class="admin-card">
+            <h3>Временный бан</h3>
+            <form id="modBanForm" class="stack">
+              <label>ID пользователя<input name="userId" /></label>
+              <label>IP<input name="ip" /></label>
+              <label>Причина<input name="reason" required /></label>
+              <label>Срок (часов)<input type="number" name="hours" required value="24" /></label>
+              <button class="danger-btn">Применить</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>OP.WEB · модерация</span>
+    </footer>
+  </div>
+
+  <script src="/moderator.js" defer></script>
+  <div id="modTwoFactor" class="twofactor hidden">
+    <form id="modTwoFactorForm" class="twofactor-card">
+      <h3>Подтвердите вход</h3>
+      <p>Введите код из e-mail администратора.</p>
+      <input type="text" name="code" maxlength="6" required />
+      <input type="hidden" name="challengeId" />
+      <div class="actions">
+        <button type="submit" class="accent-btn">Готово</button>
+        <button type="button" id="modCancelTwoFactor" class="ghost-btn">Отмена</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
