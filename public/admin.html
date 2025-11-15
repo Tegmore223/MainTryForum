@@ -70,6 +70,10 @@
               <button class="danger-btn">Применить</button>
             </form>
           </div>
+          <div class="admin-card" id="banListCard">
+            <h3>Активные баны</h3>
+            <ul id="banList" class="complaint-list compact"></ul>
+          </div>
         </div>
 
         <div class="admin-card brand-card">
@@ -172,5 +176,17 @@
   </div>
 
   <script src="/admin.js" defer></script>
+  <div id="adminTwoFactor" class="twofactor hidden">
+    <form id="adminTwoFactorForm" class="twofactor-card">
+      <h3>Подтвердите вход</h3>
+      <p>Введите 6-значный код, отправленный на e-mail администратора.</p>
+      <input type="text" name="code" maxlength="6" required />
+      <input type="hidden" name="challengeId" />
+      <div class="actions">
+        <button type="submit" class="accent-btn">Подтвердить</button>
+        <button type="button" id="adminCancelTwoFactor" class="ghost-btn">Отмена</button>
+      </div>
+    </form>
+  </div>
 </body>
 </html>

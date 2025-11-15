@@ -3,6 +3,7 @@ const { createId } = require('../utils/id');
 const { hashPassword, verifyPassword } = require('../utils/crypto');
 const cache = require('./cacheService');
 const { logAction } = require('./logService');
+const { ADMIN_LOGIN, ADMIN_PASSWORD, ADMIN_ALERT_EMAIL } = require('../config');
 const { ADMIN_LOGIN, ADMIN_PASSWORD } = require('../config');
 
 function computeBadges(user) {
@@ -21,6 +22,7 @@ function ensureDefaultAdmin() {
       id: createId('user-'),
       nickname: ADMIN_LOGIN,
       passwordHash: hashPassword(ADMIN_PASSWORD),
+      email: ADMIN_ALERT_EMAIL || '',
       email: '',
       ip: 'system',
       role: 'admin',
@@ -43,11 +45,17 @@ function ensureDefaultAdmin() {
 
 function createUser({ nickname, password, email, ip }) {
   const db = readDb();
+  const cleanNickname = String(nickname || '').trim();
+  if (!cleanNickname) {
+    throw new Error('Nickname required');
+  }
+  if (db.users.some((u) => u.nickname.toLowerCase() === cleanNickname.toLowerCase())) {
   if (db.users.some((u) => u.nickname.toLowerCase() === nickname.toLowerCase())) {
     throw new Error('Nickname already taken');
   }
   const newUser = {
     id: createId('user-'),
+    nickname: cleanNickname,
     nickname,
     passwordHash: hashPassword(password),
     email: email || '',
@@ -91,6 +99,18 @@ function updateUser(id, updates) {
   const db = readDb();
   const idx = db.users.findIndex((u) => u.id === id);
   if (idx === -1) throw new Error('User not found');
+  const current = db.users[idx];
+  const next = { ...current, ...updates };
+  if (updates.nickname) {
+    const cleanNickname = updates.nickname.trim();
+    if (!cleanNickname) throw new Error('Nickname required');
+    const duplicate = db.users.find((u) => u.nickname.toLowerCase() === cleanNickname.toLowerCase() && u.id !== id);
+    if (duplicate) {
+      throw new Error('nickname_taken');
+    }
+    next.nickname = cleanNickname;
+  }
+  db.users[idx] = next;
   db.users[idx] = { ...db.users[idx], ...updates };
   db.users[idx].badges = computeBadges(db.users[idx]);
   writeDb(db);

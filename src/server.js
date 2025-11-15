@@ -16,11 +16,23 @@ const { fileComplaint } = moderationService;
 const { readDb, writeDb } = require('./utils/storage');
 const { createId } = require('./utils/id');
 const { logAction } = require('./services/logService');
+const { sendTwoFactorCode } = require('./services/emailService');
+const messageService = require('./services/messageService');
+const {
+  PORT,
+  CAPTCHA_EXPIRY_MS,
+  ADMIN_LOGIN,
+  ADMIN_PASSWORD,
+  ADMIN_BACKUP_PASSWORD,
+  TWO_FACTOR_EXPIRY_MS,
+  ADMIN_ALERT_EMAIL
+} = require('./config');
 const { PORT, CAPTCHA_EXPIRY_MS, ADMIN_LOGIN, ADMIN_PASSWORD, ADMIN_BACKUP_PASSWORD } = require('./config');
 
 ensureDefaultAdmin();
 
 const captchaStore = new Map();
+const twoFactorChallenges = new Map();
 const mimeTypes = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -91,6 +103,30 @@ function cleanExpiredCaptchas() {
 }
 
 setInterval(cleanExpiredCaptchas, 10000);
+
+function issueTwoFactorChallenge(user) {
+  const challengeId = createId('2fa-');
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  twoFactorChallenges.set(challengeId, {
+    userId: user.id,
+    code,
+    expires: Date.now() + TWO_FACTOR_EXPIRY_MS
+  });
+  const destination = user.email || ADMIN_ALERT_EMAIL;
+  sendTwoFactorCode(destination, code);
+  return challengeId;
+}
+
+function cleanTwoFactor() {
+  const now = Date.now();
+  [...twoFactorChallenges.entries()].forEach(([key, entry]) => {
+    if (entry.expires < now) {
+      twoFactorChallenges.delete(key);
+    }
+  });
+}
+
+setInterval(cleanTwoFactor, 15000);
 
 function serveStatic(req, res) {
   let filePath = path.join(__dirname, '..', 'public', req.url === '/' ? 'index.html' : req.url);
@@ -175,6 +211,14 @@ async function handleApi(req, res) {
       return;
     }
     captchaStore.delete(captchaId);
+    try {
+      const user = createUser({ nickname, password, email, ip });
+      const token = signToken({ userId: user.id });
+      setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
+      sendJson(res, 201, { user: { nickname: user.nickname, id: user.id } });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
     const user = createUser({ nickname, password, email, ip });
     const token = signToken({ userId: user.id });
     setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
@@ -196,9 +240,43 @@ async function handleApi(req, res) {
       sendJson(res, 401, { error: 'invalid_credentials' });
       return;
     }
+    if (user.role === 'admin') {
+      const challengeId = issueTwoFactorChallenge(user);
+      sendJson(res, 200, { twoFactor: true, challengeId });
+      return;
+    }
     const token = signToken({ userId: user.id });
     setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
     sendJson(res, 200, { user: { nickname: user.nickname, role: user.role } });
+    return;
+  }
+
+  if (pathname === '/api/auth/verify-2fa' && method === 'POST') {
+    const body = await parseBody(req);
+    const challenge = twoFactorChallenges.get(body.challengeId);
+    if (!challenge) {
+      sendJson(res, 400, { error: 'challenge_not_found' });
+      return;
+    }
+    if (challenge.expires < Date.now()) {
+      twoFactorChallenges.delete(body.challengeId);
+      sendJson(res, 400, { error: 'challenge_expired' });
+      return;
+    }
+    if (String(challenge.code) !== String(body.code || '').trim()) {
+      sendJson(res, 400, { error: 'code_invalid' });
+      return;
+    }
+    const adminUser = getUserById(challenge.userId);
+    if (!adminUser || adminUser.role !== 'admin') {
+      sendJson(res, 400, { error: 'user_invalid' });
+      return;
+    }
+    twoFactorChallenges.delete(body.challengeId);
+    const token = signToken({ userId: adminUser.id });
+    setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
+    logAction('two_factor_verified', adminUser.nickname, {});
+    sendJson(res, 200, { user: { nickname: adminUser.nickname, role: adminUser.role } });
     return;
   }
 
@@ -268,6 +346,59 @@ async function handleApi(req, res) {
     if (!user) return;
     const library = threadService.collectUserLibrary(user.id);
     sendJson(res, 200, library);
+    return;
+  }
+
+  if (pathname === '/api/messages' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const messages = messageService.listMessages(user.id);
+    sendJson(res, 200, messages);
+    return;
+  }
+
+  if (pathname.match(/^\/api\/messages\/chat-/) && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const conversationId = pathname.split('/')[3];
+    try {
+      const conversation = messageService.getConversation(conversationId, user.id);
+      sendJson(res, 200, conversation);
+    } catch (err) {
+      sendJson(res, 404, { error: err.message });
+    }
+    return;
+  }
+
+  if (pathname === '/api/messages' && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const body = await parseBody(req);
+    try {
+      const conversation = messageService.sendMessage({
+        fromId: user.id,
+        toNickname: body.toNickname,
+        toId: body.toId,
+        content: body.content,
+        conversationId: body.conversationId
+      });
+      sendJson(res, 201, conversation);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  if (pathname.match(/\/api\/messages\/[^/]+\/read/) && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const conversationId = pathname.split('/')[3];
+    try {
+      const conversation = messageService.markRead(conversationId, user.id);
+      sendJson(res, 200, conversation);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
     return;
   }
 
@@ -467,6 +598,10 @@ async function handleApi(req, res) {
       sendJson(res, 404, { error: 'user_not_found' });
       return;
     }
+    if (target.id === user.id) {
+      sendJson(res, 403, { error: 'self_role_forbidden' });
+      return;
+    }
     const updated = updateUser(target.id, { role: body.role });
     logAction('assign_role', user.nickname, { userId: updated.id, role: body.role });
     sendJson(res, 200, updated);
@@ -576,6 +711,15 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (pathname === '/api/admin/bans' && method === 'GET') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const bans = moderationService.listActiveBans();
+    sendJson(res, 200, { bans });
+    return;
+  }
+
   if (pathname === '/api/admin/ban' && method === 'POST') {
     const user = requireAuth(req, res);
     if (!user) return;
@@ -583,6 +727,20 @@ async function handleApi(req, res) {
     const body = await parseBody(req);
     const ban = moderationService.banUser({ ...body, actor: user.nickname });
     sendJson(res, 201, ban);
+    return;
+  }
+
+  if (pathname === '/api/admin/unban' && method === 'POST') {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (!requireRole(user, res, ['admin'])) return;
+    const body = await parseBody(req);
+    try {
+      const ban = moderationService.unbanUser(body.banId, user.nickname);
+      sendJson(res, 200, ban);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
     return;
   }
 

@@ -54,5 +54,17 @@
   </div>
 
   <script src="/moderator.js" defer></script>
+  <div id="modTwoFactor" class="twofactor hidden">
+    <form id="modTwoFactorForm" class="twofactor-card">
+      <h3>Подтвердите вход</h3>
+      <p>Введите код из e-mail администратора.</p>
+      <input type="text" name="code" maxlength="6" required />
+      <input type="hidden" name="challengeId" />
+      <div class="actions">
+        <button type="submit" class="accent-btn">Готово</button>
+        <button type="button" id="modCancelTwoFactor" class="ghost-btn">Отмена</button>
+      </div>
+    </form>
+  </div>
 </body>
 </html>

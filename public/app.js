@@ -6,6 +6,10 @@ const state = {
   currentThread: null,
   settings: { title: 'OP.WEB', logo: '' },
   library: { favorites: [], liked: [] },
+  pendingThreadId: null,
+  chats: [],
+  activeChatId: null,
+  deviceMode: 'desktop'
   pendingThreadId: null
 };
 
@@ -15,14 +19,35 @@ const profileBtn = document.getElementById('profileBtn');
 const profilePanel = document.getElementById('profilePanel');
 const profileLabel = document.getElementById('profileLabel');
 const homeButton = document.getElementById('homeButton');
+const deviceModeBtn = document.getElementById('deviceModeBtn');
+const onboardingDeviceBtn = document.getElementById('onboardingDeviceBtn');
 const collectionsBtn = document.getElementById('collectionsBtn');
 const collectionsPanel = document.getElementById('collectionsPanel');
 const favoriteList = document.getElementById('favoriteList');
 const likedList = document.getElementById('likedList');
+const messengerBtn = document.getElementById('messengerBtn');
+const messengerPanel = document.getElementById('messengerPanel');
+const conversationList = document.getElementById('conversationList');
+const newChatForm = document.getElementById('newChatForm');
+const chatPlaceholder = document.getElementById('chatPlaceholder');
+const chatView = document.getElementById('chatView');
+const chatMessagesEl = document.getElementById('chatMessages');
+const chatTitleEl = document.getElementById('chatTitle');
+const chatSendForm = document.getElementById('chatSendForm');
+const chatBackBtn = document.getElementById('chatBackBtn');
+const refreshChatsBtn = document.getElementById('refreshChatsBtn');
 const complaintPanel = document.getElementById('complaintPanel');
 const complaintForm = document.getElementById('complaintForm');
 const forumLogoText = document.getElementById('forumLogoText');
 const forumLogoImage = document.getElementById('forumLogoImage');
+const boardTicker = document.getElementById('boardTicker');
+const twoFactorModal = document.getElementById('twoFactorModal');
+const twoFactorForm = document.getElementById('twoFactorForm');
+const cancelTwoFactor = document.getElementById('cancelTwoFactor');
+const initialParams = new URLSearchParams(window.location.search);
+state.pendingThreadId = initialParams.get('thread') || null;
+let twoFactorCallback = null;
+const DEVICE_MODE_KEY = 'opweb-device-mode';
 const initialParams = new URLSearchParams(window.location.search);
 state.pendingThreadId = initialParams.get('thread') || null;
 
@@ -65,6 +90,74 @@ function applySettings() {
   }
 }
 
+function detectDeviceMode() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const matchUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
+  const narrow = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(max-width: 768px)').matches
+    : window.innerWidth <= 768;
+  return matchUA || narrow ? 'mobile' : 'desktop';
+}
+
+function getStoredDeviceMode() {
+  try {
+    return localStorage.getItem(DEVICE_MODE_KEY);
+  } catch (err) {
+    return null;
+  }
+}
+
+function setDeviceMode(mode, persist = true) {
+  state.deviceMode = mode;
+  document.documentElement.setAttribute('data-device', mode);
+  updateDeviceButtons(mode);
+  if (persist) {
+    try {
+      localStorage.setItem(DEVICE_MODE_KEY, mode);
+    } catch (err) {
+      /* ignore quota errors */
+    }
+  }
+}
+
+function updateDeviceButtons(mode) {
+  const label = mode === 'mobile' ? 'Полная версия' : 'Версия для телефона';
+  [deviceModeBtn, onboardingDeviceBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.textContent = label;
+    btn.setAttribute('aria-pressed', mode === 'mobile');
+  });
+}
+
+function initDeviceMode() {
+  const saved = getStoredDeviceMode();
+  if (saved) {
+    setDeviceMode(saved, false);
+  } else {
+    setDeviceMode(detectDeviceMode(), false);
+  }
+  const toggleButtons = [deviceModeBtn, onboardingDeviceBtn].filter(Boolean);
+  toggleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = state.deviceMode === 'mobile' ? 'desktop' : 'mobile';
+      setDeviceMode(next, true);
+    });
+  });
+  if (typeof window.matchMedia === 'function') {
+    const query = window.matchMedia('(max-width: 768px)');
+    const syncSystemMode = () => {
+      if (!getStoredDeviceMode()) {
+        setDeviceMode(detectDeviceMode(), false);
+      }
+    };
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', syncSystemMode);
+    } else if (typeof query.addListener === 'function') {
+      query.addListener(syncSystemMode);
+    }
+  }
+}
+
 async function loadCaptcha() {
   const captcha = await request('/api/auth/captcha');
   document.querySelector('#registerForm [name="captchaId"]').value = captcha.captchaId;
@@ -72,12 +165,16 @@ async function loadCaptcha() {
 }
 
 async function init() {
+  initDeviceMode();
   await loadSettings();
   bindAuth();
   bindThreadForm();
   bindProfilePanel();
   bindHomeNavigation();
   bindCollectionsPanel();
+  bindMessengerPanel();
+  bindComplaintPanel();
+  bindTwoFactorModal();
   bindComplaintPanel();
   await loadCaptcha();
   await refreshProfile();
@@ -100,6 +197,14 @@ function bindAuth() {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm));
     try {
+      const result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
+      if (result.twoFactor) {
+        openTwoFactorModal(result.challengeId, async () => {
+          await refreshProfile();
+          loginForm.reset();
+        });
+        return;
+      }
       await request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       await refreshProfile();
     } catch (err) {
@@ -177,6 +282,87 @@ function bindCollectionsPanel() {
   });
 }
 
+function bindMessengerPanel() {
+  if (!messengerBtn || !messengerPanel) return;
+  const closeBtn = messengerPanel.querySelector('[data-close-messenger]');
+  messengerBtn.addEventListener('click', async () => {
+    if (!state.user) {
+      showOnboarding();
+      return;
+    }
+    await loadChats();
+    messengerPanel.classList.remove('hidden');
+  });
+  if (closeBtn) closeBtn.addEventListener('click', () => messengerPanel.classList.add('hidden'));
+  messengerPanel.addEventListener('click', (event) => {
+    if (event.target === messengerPanel) messengerPanel.classList.add('hidden');
+  });
+  if (conversationList) {
+    conversationList.addEventListener('click', (e) => {
+      const item = e.target.closest('li[data-chat]');
+      if (!item) return;
+      openChat(item.dataset.chat);
+    });
+  }
+  if (newChatForm) {
+    newChatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!state.user) {
+        showOnboarding();
+        return;
+      }
+      const payload = Object.fromEntries(new FormData(newChatForm));
+      payload.toNickname = (payload.toNickname || '').trim();
+      payload.content = (payload.content || '').trim();
+      if (!payload.toNickname || !payload.content) return;
+      try {
+        const conversation = await request('/api/messages', { method: 'POST', body: JSON.stringify(payload) });
+        upsertChat(conversation);
+        state.activeChatId = conversation.id;
+        newChatForm.reset();
+        renderMessengerView();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
+  if (chatSendForm) {
+    chatSendForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!state.user) {
+        showOnboarding();
+        return;
+      }
+      if (!state.activeChatId) return;
+      const payload = Object.fromEntries(new FormData(chatSendForm));
+      const content = (payload.content || '').trim();
+      if (!content) return;
+      try {
+        const conversation = await request('/api/messages', {
+          method: 'POST',
+          body: JSON.stringify({ conversationId: state.activeChatId, content })
+        });
+        upsertChat(conversation);
+        chatSendForm.reset();
+        renderMessengerView();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
+  if (chatBackBtn) {
+    chatBackBtn.addEventListener('click', () => {
+      state.activeChatId = null;
+      renderMessengerView();
+    });
+  }
+  if (refreshChatsBtn) {
+    refreshChatsBtn.addEventListener('click', () => {
+      loadChats(state.activeChatId);
+    });
+  }
+}
+
 function bindComplaintPanel() {
   if (!complaintPanel) return;
   const closeBtn = document.querySelector('[data-close-complaint]');
@@ -208,6 +394,45 @@ function bindComplaintPanel() {
   });
 }
 
+function bindTwoFactorModal() {
+  if (!twoFactorModal || !twoFactorForm) return;
+  twoFactorForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(twoFactorForm));
+    try {
+      await request('/api/auth/verify-2fa', { method: 'POST', body: JSON.stringify(formData) });
+      closeTwoFactorModal();
+      if (typeof twoFactorCallback === 'function') {
+        const callback = twoFactorCallback;
+        twoFactorCallback = null;
+        await callback();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  if (cancelTwoFactor) {
+    cancelTwoFactor.addEventListener('click', () => {
+      closeTwoFactorModal();
+      twoFactorCallback = null;
+    });
+  }
+}
+
+function openTwoFactorModal(challengeId, onSuccess) {
+  if (!twoFactorModal || !twoFactorForm) return;
+  twoFactorForm.challengeId.value = challengeId;
+  twoFactorForm.code.value = '';
+  twoFactorCallback = onSuccess;
+  twoFactorModal.classList.remove('hidden');
+}
+
+function closeTwoFactorModal() {
+  if (!twoFactorModal || !twoFactorForm) return;
+  twoFactorForm.reset();
+  twoFactorModal.classList.add('hidden');
+}
+
 async function loadLibrary() {
   try {
     const data = await request('/api/library');
@@ -234,6 +459,150 @@ function renderCollections(library) {
   };
   applyList(favoriteList, library.favorites || []);
   applyList(likedList, library.liked || []);
+}
+
+function updateBoardTicker() {
+  if (!boardTicker) return;
+  if (!state.sections.length) {
+    boardTicker.innerHTML = '<span class="muted">Разделы станут доступны после входа.</span>';
+    return;
+  }
+  boardTicker.innerHTML = state.sections
+    .slice(0, 5)
+    .map((section) => `<span class="ticker-chip">/${section.title}/ · ${section.description || ''}</span>`)
+    .join('');
+}
+
+function getChatPeer(chat) {
+  if (!chat || !Array.isArray(chat.participants)) return null;
+  if (!state.user) return chat.participants[0];
+  return chat.participants.find((p) => p.id !== state.user.id) || chat.participants[0];
+}
+
+function upsertChat(conversation) {
+  if (!conversation) return;
+  const idx = state.chats.findIndex((chat) => chat.id === conversation.id);
+  if (idx === -1) {
+    state.chats = [conversation, ...state.chats];
+  } else {
+    state.chats.splice(idx, 1, conversation);
+  }
+  state.chats.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
+function renderMessengerView() {
+  renderChatList();
+  renderActiveChat();
+}
+
+function renderChatList() {
+  if (!conversationList) return;
+  if (!state.chats.length) {
+    conversationList.innerHTML = '<li class="muted">Нет бесед</li>';
+    return;
+  }
+  conversationList.innerHTML = '';
+  state.chats.forEach((chat) => {
+    const item = document.createElement('li');
+    item.dataset.chat = chat.id;
+    if (chat.id === state.activeChatId) {
+      item.classList.add('active');
+    }
+    const head = document.createElement('div');
+    head.className = 'chat-preview';
+    const title = document.createElement('strong');
+    const peer = getChatPeer(chat);
+    title.textContent = peer ? peer.nickname : 'Беседа';
+    head.appendChild(title);
+    if (chat.unreadCount > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'chat-unread';
+      badge.textContent = chat.unreadCount > 9 ? '9+' : chat.unreadCount;
+      head.appendChild(badge);
+    }
+    item.appendChild(head);
+    const meta = document.createElement('div');
+    meta.className = 'chat-meta';
+    const excerpt = document.createElement('span');
+    excerpt.textContent = chat.lastMessage ? chat.lastMessage.content.slice(0, 80) : 'Нет сообщений';
+    const time = document.createElement('span');
+    time.textContent = chat.lastMessage ? new Date(chat.lastMessage.createdAt).toLocaleString() : '—';
+    meta.append(excerpt, time);
+    item.appendChild(meta);
+    conversationList.appendChild(item);
+  });
+}
+
+function renderActiveChat() {
+  if (!chatPlaceholder || !chatView) return;
+  const chat = state.chats.find((entry) => entry.id === state.activeChatId);
+  if (!chat) {
+    chatPlaceholder.classList.remove('hidden');
+    chatView.classList.add('hidden');
+    return;
+  }
+  chatPlaceholder.classList.add('hidden');
+  chatView.classList.remove('hidden');
+  if (chatTitleEl) {
+    const peer = getChatPeer(chat);
+    chatTitleEl.textContent = peer ? peer.nickname : 'Беседа';
+  }
+  if (chatMessagesEl) {
+    chatMessagesEl.innerHTML = '';
+    chat.messages.forEach((message) => {
+      const bubble = document.createElement('div');
+      bubble.classList.add('chat-bubble');
+      if (message.authorId === state.user?.id) {
+        bubble.classList.add('self');
+      }
+      const body = document.createElement('p');
+      body.textContent = message.content;
+      const meta = document.createElement('span');
+      const authorLabel = message.authorId === state.user?.id ? 'Вы' : message.authorNickname;
+      meta.textContent = `${authorLabel} · ${new Date(message.createdAt).toLocaleString()}`;
+      bubble.append(body, meta);
+      chatMessagesEl.appendChild(bubble);
+    });
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+  if (chat.unreadCount > 0) {
+    markChatRead(chat.id);
+  }
+}
+
+async function markChatRead(chatId) {
+  try {
+    const updated = await request(`/api/messages/${chatId}/read`, { method: 'POST', body: JSON.stringify({}) });
+    upsertChat(updated);
+    renderChatList();
+  } catch (err) {
+    console.warn('Не удалось отметить чат прочитанным', err);
+  }
+}
+
+async function loadChats(preselectId) {
+  if (!state.user) return;
+  try {
+    const data = await request('/api/messages');
+    state.chats = Array.isArray(data) ? data : [];
+    if (preselectId) {
+      state.activeChatId = preselectId;
+    }
+    if (state.activeChatId && !state.chats.some((chat) => chat.id === state.activeChatId)) {
+      state.activeChatId = state.chats[0]?.id || null;
+    }
+    if (!state.activeChatId && state.chats.length) {
+      state.activeChatId = state.chats[0].id;
+    }
+    renderMessengerView();
+  } catch (err) {
+    console.warn('Не удалось загрузить чаты', err);
+  }
+}
+
+function openChat(chatId) {
+  state.activeChatId = chatId;
+  renderMessengerView();
 }
 
 function openComplaint(target) {
@@ -423,6 +792,9 @@ function clearForumState() {
   state.threads = [];
   state.currentThread = null;
   state.library = { favorites: [], liked: [] };
+  state.chats = [];
+  state.activeChatId = null;
+  renderMessengerView();
   document.getElementById('sectionsList').innerHTML = '';
   document.getElementById('threadsList').innerHTML = '';
   document.getElementById('threadView').classList.add('hidden');
@@ -474,6 +846,7 @@ async function loadSections() {
       updateThreadParam(null);
     }
   }
+  updateBoardTicker();
 }
 
 async function openSection(section) {

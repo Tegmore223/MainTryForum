@@ -1,9 +1,34 @@
 <!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-device="desktop">
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OP.WEB Форум</title>
+  <script>
+    (function () {
+      var STORAGE_KEY = 'opweb-device-mode';
+      var mode = 'desktop';
+      try {
+        var stored = window.localStorage && localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          mode = stored;
+        } else {
+          var ua = (navigator.userAgent || '').toLowerCase();
+          var matched = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
+          var narrow = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+          mode = matched || narrow ? 'mobile' : 'desktop';
+        }
+      } catch (err) {
+        try {
+          mode = window.matchMedia && window.matchMedia('(max-width: 768px)').matches ? 'mobile' : 'desktop';
+        } catch (ignore) {
+          mode = 'desktop';
+        }
+      }
+      document.documentElement.setAttribute('data-device', mode);
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -17,6 +42,9 @@
         <img id="forumLogoImage" class="logo-image hidden" alt="Логотип форума" />
       </button>
       <div class="header-actions">
+        <button id="deviceModeBtn" class="ghost-btn" type="button" aria-label="Переключить версию форума">Версия для телефона</button>
+        <button id="collectionsBtn" class="ghost-btn" type="button" aria-label="Коллекции" title="Избранные и лайкнутые треды">★</button>
+        <button id="messengerBtn" class="ghost-btn" type="button" aria-label="Сообщения" title="Личные сообщения">✉</button>
         <button id="collectionsBtn" class="ghost-btn" type="button" aria-label="Коллекции" title="Избранные и лайкнутые треды">★</button>
         <button id="profileBtn" class="profile-chip" type="button">
           <span id="profileLabel">Гость</span>
@@ -26,6 +54,16 @@
     </header>
 
     <main>
+      <section class="board-hero" id="boardHero">
+        <div class="board-hero__copy">
+          <p class="eyebrow">анонимный поток</p>
+          <h1>OP.WEB борда</h1>
+          <p>Выбирайте разделы, создавайте ветки, отвечайте через markdown или BBCode и держите любимые темы под рукой. Интерфейс вдохновлён 4chan, но работает как современный мессенджер.</p>
+        </div>
+        <div class="board-hero__ticker" id="boardTicker">
+          <span class="muted">Разделы появятся сразу после входа.</span>
+        </div>
+      </section>
       <section id="forumShell" class="layout hidden">
         <section class="panel sections emphasis">
           <div class="panel-head">
@@ -66,6 +104,9 @@
         <h2>Войдите в OP.WEB</h2>
         <p>Регистрация требуется, чтобы просматривать разделы. Только никнейм и пароль — электронная почта опциональна.</p>
         <small class="muted">E-mail нужен только для восстановления и его можно не указывать.</small>
+        <div class="device-switch">
+          <button id="onboardingDeviceBtn" class="ghost-btn" type="button">Версия для телефона</button>
+        </div>
       </div>
       <div class="auth-grid">
         <form id="registerForm" class="auth-card">
@@ -154,6 +195,51 @@
     </div>
   </div>
 
+  <div id="messengerPanel" class="profile-panel hidden">
+    <div class="profile-card compact messenger">
+      <div class="profile-card__head">
+        <div>
+          <p class="eyebrow">Сообщения</p>
+          <h3>Личные беседы</h3>
+        </div>
+        <button data-close-messenger class="ghost-btn" type="button">Закрыть</button>
+      </div>
+      <div class="messenger-grid">
+        <section class="messenger-sidebar">
+          <div class="sidebar-head">
+            <h4>Чаты</h4>
+            <button id="refreshChatsBtn" class="ghost-btn" type="button" title="Обновить">↻</button>
+          </div>
+          <ul id="conversationList" class="chat-list"></ul>
+          <form id="newChatForm" class="stack messenger-start">
+            <label>Пользователь (ник)<input name="toNickname" required maxlength="24" /></label>
+            <label>Сообщение<textarea name="content" rows="2" maxlength="2000" required></textarea></label>
+            <button class="accent-btn" type="submit">Начать чат</button>
+          </form>
+        </section>
+        <section class="messenger-content">
+          <div id="chatPlaceholder" class="chat-placeholder">
+            <p>Выберите беседу или создайте новую, чтобы начать общение.</p>
+          </div>
+          <div id="chatView" class="chat-view hidden">
+            <header class="chat-head">
+              <div>
+                <p class="eyebrow">Беседа</p>
+                <h4 id="chatTitle"></h4>
+              </div>
+              <button id="chatBackBtn" class="ghost-btn" type="button">Список</button>
+            </header>
+            <div id="chatMessages" class="chat-messages"></div>
+            <form id="chatSendForm" class="chat-input">
+              <textarea name="content" rows="2" maxlength="2000" placeholder="Напишите сообщение..." required></textarea>
+              <button class="accent-btn" type="submit">Отправить</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <div id="complaintPanel" class="profile-panel hidden">
     <div class="profile-card compact">
       <div class="profile-card__head">
@@ -171,6 +257,19 @@
         <button class="danger-btn" type="submit">Отправить</button>
       </form>
     </div>
+  </div>
+
+  <div id="twoFactorModal" class="twofactor hidden">
+    <form id="twoFactorForm" class="twofactor-card">
+      <h3>Подтверждение входа</h3>
+      <p>На ваш e-mail отправлен код. Введите его, чтобы завершить авторизацию.</p>
+      <input type="text" name="code" placeholder="123456" maxlength="6" required />
+      <input type="hidden" name="challengeId" />
+      <div class="actions">
+        <button type="submit" class="accent-btn">Подтвердить</button>
+        <button type="button" id="cancelTwoFactor" class="ghost-btn">Отмена</button>
+      </div>
+    </form>
   </div>
 
   <script src="/app.js" defer></script>

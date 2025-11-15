@@ -91,4 +91,30 @@ function isBanned({ userId, ip }) {
   return db.bans.some((ban) => (userId && ban.userId === userId) || (ip && ban.ip === ip));
 }
 
+function listActiveBans() {
+  const db = readDb();
+  db.bans = db.bans.filter((ban) => !ban.expiresAt || ban.expiresAt > Date.now());
+  writeDb(db);
+  return db.bans;
+}
+
+function unbanUser(banId, actor) {
+  const db = readDb();
+  const index = db.bans.findIndex((ban) => ban.id === banId);
+  if (index === -1) throw new Error('ban_not_found');
+  const [ban] = db.bans.splice(index, 1);
+  writeDb(db);
+  logAction('unban', actor, { userId: ban.userId, ip: ban.ip });
+  return ban;
+}
+
+module.exports = {
+  fileComplaint,
+  listComplaints,
+  resolveComplaint,
+  banUser,
+  isBanned,
+  listActiveBans,
+  unbanUser
+};
 module.exports = { fileComplaint, listComplaints, resolveComplaint, banUser, isBanned };

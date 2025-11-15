@@ -11,6 +11,21 @@ async function adminRequest(url, options = {}) {
 }
 
 let brandingLogoData = null;
+let loginCard;
+let workspace;
+let adminTwoFactorModal;
+let adminTwoFactorForm;
+let adminCancelTwoFactor;
+let adminTwoFactorCallback = null;
+
+async function initAdmin() {
+  const loginForm = document.getElementById('adminLoginForm');
+  loginCard = document.getElementById('adminLoginCard');
+  workspace = document.getElementById('adminWorkspace');
+  adminTwoFactorModal = document.getElementById('adminTwoFactor');
+  adminTwoFactorForm = document.getElementById('adminTwoFactorForm');
+  adminCancelTwoFactor = document.getElementById('adminCancelTwoFactor');
+  bindAdminTwoFactor();
 
 async function initAdmin() {
   const loginForm = document.getElementById('adminLoginForm');
@@ -21,6 +36,12 @@ async function initAdmin() {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm));
     try {
+      const result = await adminRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
+      if (result.twoFactor) {
+        openAdminTwoFactor(result.challengeId);
+        return;
+      }
+      await enterWorkspace();
       await adminRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       loginCard.classList.add('hidden');
       workspace.classList.remove('hidden');
@@ -50,6 +71,7 @@ async function initAdmin() {
     const data = Object.fromEntries(new FormData(e.target));
     await adminRequest('/api/admin/ban', { method: 'POST', body: JSON.stringify(data) });
     alert('Блокировка применена');
+    await loadBans();
   });
 
   document.getElementById('exportUsers').addEventListener('click', async () => {
@@ -133,6 +155,23 @@ async function initAdmin() {
   document.getElementById('refreshUsers').addEventListener('click', () => loadUsers());
   const refreshComplaints = document.getElementById('refreshComplaints');
   if (refreshComplaints) refreshComplaints.addEventListener('click', () => loadComplaints());
+}
+
+async function enterWorkspace() {
+  if (!loginCard || !workspace) return;
+  loginCard.classList.add('hidden');
+  workspace.classList.remove('hidden');
+  const loginForm = document.getElementById('adminLoginForm');
+  if (loginForm) loginForm.reset();
+  await Promise.all([
+    refreshAdmin(),
+    loadSections(),
+    loadThreads(),
+    loadBranding(),
+    loadUsers(),
+    loadComplaints(),
+    loadBans()
+  ]);
 }
 
 async function loadSections() {
@@ -331,6 +370,81 @@ async function loadComplaints() {
     li.appendChild(btn);
     list.appendChild(li);
   });
+}
+
+async function loadBans() {
+  const list = document.getElementById('banList');
+  if (!list) return;
+  const data = await adminRequest('/api/admin/bans');
+  if (!data.bans.length) {
+    list.innerHTML = '<li class="muted">Активных блокировок нет</li>';
+    return;
+  }
+  list.innerHTML = data.bans
+    .map(
+      (ban) => `
+        <li>
+          <div class="ban-row">
+            <div>
+              <strong>${ban.userId || ban.ip || '—'}</strong>
+              <span>${ban.reason || 'Без причины'}</span>
+              <small>${ban.ip ? `IP: ${ban.ip}` : ''}</small>
+              <small>${ban.expiresAt ? `До ${new Date(ban.expiresAt).toLocaleString()}` : 'Бессрочно'}</small>
+            </div>
+            <button class="ghost-btn" data-unban="${ban.id}">Снять бан</button>
+          </div>
+        </li>`
+    )
+    .join('');
+  list.querySelectorAll('[data-unban]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try {
+        await adminRequest('/api/admin/unban', { method: 'POST', body: JSON.stringify({ banId: btn.dataset.unban }) });
+        await loadBans();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
+}
+
+function bindAdminTwoFactor() {
+  if (!adminTwoFactorForm) return;
+  adminTwoFactorForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(adminTwoFactorForm));
+    try {
+      await adminRequest('/api/auth/verify-2fa', { method: 'POST', body: JSON.stringify(payload) });
+      closeAdminTwoFactor();
+      if (typeof adminTwoFactorCallback === 'function') {
+        const cb = adminTwoFactorCallback;
+        adminTwoFactorCallback = null;
+        await cb();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  if (adminCancelTwoFactor) {
+    adminCancelTwoFactor.addEventListener('click', () => {
+      adminTwoFactorCallback = null;
+      closeAdminTwoFactor();
+    });
+  }
+}
+
+function openAdminTwoFactor(challengeId) {
+  if (!adminTwoFactorModal || !adminTwoFactorForm) return;
+  adminTwoFactorForm.challengeId.value = challengeId;
+  adminTwoFactorForm.code.value = '';
+  adminTwoFactorCallback = () => enterWorkspace();
+  adminTwoFactorModal.classList.remove('hidden');
+}
+
+function closeAdminTwoFactor() {
+  if (!adminTwoFactorModal || !adminTwoFactorForm) return;
+  adminTwoFactorForm.reset();
+  adminTwoFactorModal.classList.add('hidden');
 }
 
 window.addEventListener('DOMContentLoaded', initAdmin);
