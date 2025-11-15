@@ -8,6 +8,7 @@ const state = {
   library: { favorites: [], liked: [] },
   pendingThreadId: null,
   messages: { inbox: [], sent: [] }
+  pendingThreadId: null
 };
 
 const onboardingEl = document.getElementById('onboarding');
@@ -36,6 +37,8 @@ const cancelTwoFactor = document.getElementById('cancelTwoFactor');
 const initialParams = new URLSearchParams(window.location.search);
 state.pendingThreadId = initialParams.get('thread') || null;
 let twoFactorCallback = null;
+const initialParams = new URLSearchParams(window.location.search);
+state.pendingThreadId = initialParams.get('thread') || null;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -92,6 +95,7 @@ async function init() {
   bindMessengerPanel();
   bindComplaintPanel();
   bindTwoFactorModal();
+  bindComplaintPanel();
   await loadCaptcha();
   await refreshProfile();
 }
@@ -121,6 +125,7 @@ function bindAuth() {
         });
         return;
       }
+      await request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
       await refreshProfile();
     } catch (err) {
       alert(err.message);

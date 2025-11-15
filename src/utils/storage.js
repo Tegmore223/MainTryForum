@@ -32,6 +32,8 @@ function decryptPayload(raw) {
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   return decrypted.toString('utf8');
 }
+const path = require('path');
+const { DATA_FILE } = require('../config');
 
 function ensureDefaults(payload) {
   if (!payload.settings) {
@@ -76,12 +78,14 @@ function readDb() {
   const raw = fs.readFileSync(DATA_FILE, 'utf-8');
   const decoded = decryptPayload(raw);
   const payload = JSON.parse(decoded);
+  const payload = JSON.parse(raw);
   return ensureDefaults(payload);
 }
 
 function writeDb(data) {
   const encrypted = encryptPayload(JSON.stringify(data));
   fs.writeFileSync(DATA_FILE, encrypted);
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 module.exports = { readDb, writeDb };

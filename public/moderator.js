@@ -23,6 +23,10 @@ async function initMod() {
   modTwoFactorForm = document.getElementById('modTwoFactorForm');
   modCancelTwoFactor = document.getElementById('modCancelTwoFactor');
   bindModTwoFactor();
+async function initMod() {
+  const loginForm = document.getElementById('modLoginForm');
+  const tools = document.getElementById('modTools');
+  const loginCard = document.getElementById('modLoginCard');
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm));
@@ -33,6 +37,10 @@ async function initMod() {
         return;
       }
       await enterModTools();
+      await modRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
+      loginCard.classList.add('hidden');
+      tools.classList.remove('hidden');
+      await loadComplaints();
     } catch (err) {
       alert(err.message);
     }
