@@ -117,4 +117,3 @@ module.exports = {
   listActiveBans,
   unbanUser
 };
-module.exports = { fileComplaint, listComplaints, resolveComplaint, banUser, isBanned };

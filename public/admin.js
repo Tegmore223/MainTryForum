@@ -27,11 +27,6 @@ async function initAdmin() {
   adminCancelTwoFactor = document.getElementById('adminCancelTwoFactor');
   bindAdminTwoFactor();
 
-async function initAdmin() {
-  const loginForm = document.getElementById('adminLoginForm');
-  const loginCard = document.getElementById('adminLoginCard');
-  const workspace = document.getElementById('adminWorkspace');
-
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm));
@@ -42,10 +37,6 @@ async function initAdmin() {
         return;
       }
       await enterWorkspace();
-      await adminRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(data) });
-      loginCard.classList.add('hidden');
-      workspace.classList.remove('hidden');
-      await Promise.all([refreshAdmin(), loadSections(), loadThreads(), loadBranding(), loadUsers(), loadComplaints()]);
     } catch (err) {
       alert(err.message);
     }

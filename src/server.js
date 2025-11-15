@@ -27,7 +27,6 @@ const {
   TWO_FACTOR_EXPIRY_MS,
   ADMIN_ALERT_EMAIL
 } = require('./config');
-const { PORT, CAPTCHA_EXPIRY_MS, ADMIN_LOGIN, ADMIN_PASSWORD, ADMIN_BACKUP_PASSWORD } = require('./config');
 
 ensureDefaultAdmin();
 
@@ -219,10 +218,6 @@ async function handleApi(req, res) {
     } catch (err) {
       sendJson(res, 400, { error: err.message });
     }
-    const user = createUser({ nickname, password, email, ip });
-    const token = signToken({ userId: user.id });
-    setCookie(res, 'opweb_token', token, { httpOnly: true, sameSite: 'Strict', path: '/' });
-    sendJson(res, 201, { user: { nickname: user.nickname, id: user.id } });
     return;
   }
 

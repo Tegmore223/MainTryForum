@@ -24,5 +24,4 @@ module.exports = {
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD || '',
   EMAIL_FROM: process.env.EMAIL_FROM || 'OP.WEB <no-reply@opweb>',
   ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL || 'security@opweb.local'
-  ADMIN_BACKUP_PASSWORD: 'personal242273'
 };
